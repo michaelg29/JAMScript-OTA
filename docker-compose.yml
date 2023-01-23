@@ -18,15 +18,16 @@ services:
     image: redis:latest
     container_name: ijam-redis
     hostname: ijam-redis
-    restart: "no"
     volumes:
       - data:/data
-      - ./redis:/etc/redis
+      - ./redis/data:/data
+      - ./redis/conf:/etc/redis
     ports:
       - 6379:6379
     environment:
       REDIS_USER: '${REDIS_USER}'
       REDIS_PASSWORD: '${REDIS_PASSWORD}'
+      REDISCLI_AUTH: '${REDIS_MASTERPWD}'
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - redis-server --user ${REDIS_USER} +@all ~* on ">${REDIS_PASSWORD}" --include /etc/redis/redis.conf
+      - /etc/redis/redis.sh
