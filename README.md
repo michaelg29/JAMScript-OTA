@@ -11,11 +11,8 @@ Make a copy of `.env.example` and rename it to `.env`.
 # build the Docker image
 docker build -t ijam-master .
 
-# build the containers
-docker compose build
-
-# start the containers
-docker compose up
+# build and start the containers
+docker compose up --build
 ```
 ### Subsequent startups
 ```
