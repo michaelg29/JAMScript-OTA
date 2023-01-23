@@ -1,10 +1,6 @@
 ## Setting up
 ### Create `.env` file
-```
-REDIS_USER=username
-REDIS_PASSWORD=password
-REDIS_MASTERPWD=masterpwd
-```
+Make a copy of `.env.example` and rename it to `.env`.
 
 * `REDIS_USER` and `REDIS_PASSWORD` are the credentials for an account that you can login with.
 * `REDIS_MASTERPWD` is the master password for the redis CLI. Through `docker-compose.yml`, this gets forwarded to the environment variable `REDISCLI_AUTH`, which will automatically be used when starting `redis-cli`.

@@ -29,10 +29,10 @@ services:
       - ./redis/data:/data
       - ./redis/conf:/etc/redis
     ports:
-      - 6379:6379
+      - ${REDIS_PORT}:${REDIS_PORT}
+    env_file:
+      - ".env"
     environment:
-      REDIS_USER: '${REDIS_USER}'
-      REDIS_PASSWORD: '${REDIS_PASSWORD}'
       REDISCLI_AUTH: '${REDIS_MASTERPWD}'
     entrypoint: ["/etc/redis/redis.sh", "-c"]
     networks:
