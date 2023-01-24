@@ -4,5 +4,5 @@ RUN apt-get update
 
 CMD ["echo", "Hello, world!"]
 
-COPY ./client/client.sh /etc/client/client.sh
-RUN chmod +x /etc/client/client.sh
+COPY ./ota-portal/ota-portal.sh /etc/ota-portal/ota-portal.sh
+RUN chmod +x /etc/ota-portal/ota-portal.sh

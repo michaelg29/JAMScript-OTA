@@ -1,4 +1,4 @@
 #!/bin/sh
 
-cd /etc/client
+cd /etc/ota-portal
 npm start

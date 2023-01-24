@@ -27,6 +27,9 @@ docker exec -it ijam-redis /bin/bash
 # inside the Redis container
 redis-cli
 
+# inside the Redis CLI, connect to docker redis, replace with environment variables set in .env [here](#create-env-file)
+connect ijam-redis ${REDIS_PORT}
+
 # inside the Redis CLI, replace with environment variables set in .env [here](#create-env-file)
 auth ${REDIS_USER} ${REDIS_PASSWORD}
 ```

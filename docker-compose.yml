@@ -12,13 +12,13 @@ services:
     image: ijam-master
     container_name: "ijam-master"
     volumes:
-      - ./client:/etc/client
+      - ./ota-portal:/etc/ota-portal
     build:
       context: ./
       dockerfile: Dockerfile
     env_file:
       - ".env"
-    entrypoint: ["/etc/client/client.sh", "-c"]
+    entrypoint: ["/etc/ota-portal/ota-portal.sh", "-c"]
     networks:
       - ijam_default
 
@@ -28,8 +28,8 @@ services:
     hostname: ijam-redis
     volumes:
       - data:/data
+      - ./redis:/etc/redis
       - ./redis/data:/data
-      - ./redis/conf:/etc/redis
     ports:
       - ${REDIS_PORT}:${REDIS_PORT}
     expose:
