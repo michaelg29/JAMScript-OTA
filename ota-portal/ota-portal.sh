@@ -1,4 +1,3 @@
 #!/bin/sh
 
-cd /etc/ota-portal
-npm start
+node ${JAMOTA_ROOT}/ota-portal/main.js

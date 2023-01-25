@@ -1,8 +1,5 @@
 version: "0.0"
 
-volumes:
-  data:
-
 networks:
   ijam_default:
     driver: bridge
@@ -11,33 +8,20 @@ services:
   ijam-master:
     image: ijam-master
     container_name: "ijam-master"
-    volumes:
-      - ./ota-portal:/etc/ota-portal
-    build:
-      context: ./
-      dockerfile: Dockerfile
-    env_file:
-      - ".env"
-    entrypoint: ["/etc/ota-portal/ota-portal.sh", "-c"]
-    networks:
-      - ijam_default
-
-  redis:
-    image: redis:latest
-    container_name: ijam-redis
-    hostname: ijam-redis
-    volumes:
-      - data:/data
-      - ./redis:/etc/redis
-      - ./redis/data:/data
-    ports:
-      - ${REDIS_PORT}:${REDIS_PORT}
-    expose:
-      - ${REDIS_PORT}
     env_file:
       - ".env"
     environment:
       REDISCLI_AUTH: '${REDIS_MASTERPWD}'
-    entrypoint: ["/etc/redis/redis.sh", "-c"]
+    volumes:
+      - ./ota-portal:${JAMOTA_ROOT}/ota-portal
+      - ./redis:${JAMOTA_ROOT}/redis
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
+    expose:
+      - ${REDIS_PORT}
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    entrypoint: ["${JAMOTA_ROOT}/start.sh", "-c"]
     networks:
       - ijam_default

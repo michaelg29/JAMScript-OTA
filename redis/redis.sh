@@ -22,5 +22,6 @@ then
 fi
 
 # start redis
-eval redis-server --include /etc/redis/redis.conf \
-    --port ${REDIS_PORT}${host_arg}${requirepass_arg}${user_arg}
+eval redis-server --include ${JAMOTA_ROOT}/redis/redis.conf \
+    --port ${REDIS_PORT} \
+    --dir ${JAMOTA_ROOT}/redis/data${host_arg}${requirepass_arg}
