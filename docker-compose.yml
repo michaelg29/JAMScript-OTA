@@ -13,12 +13,15 @@ services:
     environment:
       REDISCLI_AUTH: '${REDIS_MASTERPWD}'
     volumes:
+      - ./start.sh:${JAMOTA_ROOT}/start.sh
       - ./ota-portal:${JAMOTA_ROOT}/ota-portal
       - ./redis:${JAMOTA_ROOT}/redis
     ports:
       - ${REDIS_PORT}:${REDIS_PORT}
+      - ${OTA_PORT}:${OTA_PORT}
     expose:
       - ${REDIS_PORT}
+      - ${OTA_PORT}
     build:
       context: ./
       dockerfile: Dockerfile

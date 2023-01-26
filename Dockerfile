@@ -19,7 +19,7 @@ COPY ./start.sh ${JAMOTA_ROOT}/start.sh
 RUN sudo chmod +x ${JAMOTA_ROOT}/start.sh
 
 COPY ./ota-portal/ota-portal.sh ${JAMOTA_ROOT}/ota-portal/ota-portal.sh
-RUN sudo chmod +x ${JAMOTA_ROOT}/start.sh
+RUN sudo chmod +x ${JAMOTA_ROOT}/ota-portal/ota-portal.sh
 
 COPY ./redis/redis.sh ${JAMOTA_ROOT}/redis/redis.sh
 RUN sudo chmod +x ${JAMOTA_ROOT}/redis/redis.sh

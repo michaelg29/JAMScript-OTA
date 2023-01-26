@@ -1,3 +1,4 @@
 #!/bin/sh
 
-node ${JAMOTA_ROOT}/ota-portal/main.js
+cd ${JAMOTA_ROOT}/ota-portal
+./bin/www
