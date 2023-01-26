@@ -10,7 +10,6 @@
   "license": "ISC",
   "dependencies": {
     "cookie-parser": "^1.4.6",
-    "debug": "^2.6.9",
     "express": "^4.18.2",
     "http-errors": "^2.0.0",
     "morgan": "^1.10.0",

@@ -18,13 +18,13 @@ services:
       - ./redis:${JAMOTA_ROOT}/redis
     ports:
       - ${REDIS_PORT}:${REDIS_PORT}
-      - ${OTA_PORT}:${OTA_PORT}
+      - ${PORTAL_PORT}:${PORTAL_PORT}
     expose:
       - ${REDIS_PORT}
-      - ${OTA_PORT}
+      - ${PORTAL_PORT}
     build:
       context: ./
       dockerfile: Dockerfile
-    entrypoint: ["${JAMOTA_ROOT}/start.sh", "-c"]
+    entrypoint: ["${JAMOTA_ROOT}/start.sh", "-c", "-r", "${REDIS_MODE:-none}", "-p", "${PORTAL_MODE:-none}"]
     networks:
       - ijam_default
