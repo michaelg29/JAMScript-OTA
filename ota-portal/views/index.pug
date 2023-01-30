@@ -9,6 +9,16 @@ block content
         p <a href="https://localhost:3000/logout">Logout</a>
         h1 Hi #{name}, Welcome to the Over-The-Air Update Console for JAMScript
 
+        p
+          | query:
+          input(type="text", id="query")
+
+        input(type="button", value="submit", id="submit")
+
+        p(id="output")
+
       tr 
         h2 List all machines
         p To see all machines, click <a href="http://localhost:3000/list">http://localhost:3000/list</a>
+
+  script(src='/javascripts/query.js')

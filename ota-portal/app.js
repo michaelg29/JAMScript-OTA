@@ -4,13 +4,23 @@ var logger = require('morgan');
 var path = require('path');
 var createError = require('http-errors');
 
+var redis = require('redis');
+var rclient = redis.createClient({
+    host: process.env.REDIS_HOST,
+    port: process.env.REDIS_PORT,
+    password: process.env.REDIS_MASTERPWD
+});
+
 var app = express();
 
 // middleware
 app.use(logger('dev'));
+app.use(express.text({
+    type: 'text/*'
+}));
 app.use(express.json());
 app.use(express.urlencoded({
-    extended: false
+    extended: true
 }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -23,6 +33,26 @@ app.set('view engine', 'pug');
 app.get("/", (req, res) => {
     res.render('index', {
         name: 'admin'
+    });
+});
+
+function processRedisResponse(httpRes, err, redisReply) {
+    if (err) {
+        httpRes.status(400).send(err);
+        return;
+    }
+
+    console.log(redisReply);
+    httpRes.type('text');
+    httpRes.send(typeof redisReply === 'number' ? 'OK' : redisReply);
+}
+
+app.post("/query", (req, res) => {
+    let query = req.body.split(' ');
+    let queryArgs = query.slice(1);
+
+    rclient.send_command(query[0], queryArgs, (err, reply) => {
+        processRedisResponse(res, err, reply);
     });
 });
 
