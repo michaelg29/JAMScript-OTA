@@ -21,6 +21,9 @@ then
     host_arg=" --bind ${REDIS_HOST}"
 fi
 
+# create data directory if does not exist
+mkdir -p -- ${JAMOTA_ROOT}/redis/data
+
 # start redis
 eval redis-server --include ${JAMOTA_ROOT}/redis/redis.conf \
     --port ${REDIS_PORT} \

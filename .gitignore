@@ -1,7 +1,4 @@
 .env
 *node_modules
-<<<<<<< HEAD
-=======
-*.pfx
->>>>>>> c87c724 (Add environment support and instructions for HTTPS hosting)
 *.pem
+*.rdb
