@@ -4,12 +4,10 @@ var logger = require('morgan');
 var path = require('path');
 var createError = require('http-errors');
 
-var redis = require('redis');
-var rclient = redis.createClient({
-    host: process.env.REDIS_HOST,
-    port: process.env.REDIS_PORT,
-    password: process.env.REDIS_MASTERPWD
-});
+var auth = require('./routes/auth');
+var deviceRouter = require('./routes/device');
+
+var rclient = require('./redis-client');
 
 var app = express();
 
@@ -29,10 +27,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
 
+// authorization
+app.use(auth);
+
 // index redirect
 app.get("/", (req, res) => {
     res.render('index', {
-        name: 'admin'
+        name: req.user.name
     });
 });
 
@@ -41,20 +42,21 @@ function processRedisResponse(httpRes, err, redisReply) {
         httpRes.status(400).send(err);
         return;
     }
-
     console.log(redisReply);
+
     httpRes.type('text');
     httpRes.send(typeof redisReply === 'number' ? 'OK' : redisReply);
 }
 
-app.post("/query", (req, res) => {
+app.post("/query", async (req, res) => {
     let query = req.body.split(' ');
     let queryArgs = query.slice(1);
 
-    rclient.send_command(query[0], queryArgs, (err, reply) => {
-        processRedisResponse(res, err, reply);
-    });
+    [err, reply] = await rclient(query[0], queryArgs);
+    processRedisResponse(res, err, reply);
 });
+
+app.use("/device", deviceRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
