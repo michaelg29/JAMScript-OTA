@@ -1,13 +1,13 @@
-var express = require('express');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
-var path = require('path');
-var createError = require('http-errors');
+const express = require('express');
+const cookieParser = require('cookie-parser');
+const logger = require('morgan');
+const path = require('path');
+const errors = require('./httperror');
 
-var auth = require('./routes/auth');
-var deviceRouter = require('./routes/device');
+const auth = require('./routes/auth');
+const deviceRouter = require('./routes/device');
 
-var rclient = require('./redis-client');
+const rclient = require('./redis-client');
 
 var app = express();
 
@@ -58,19 +58,18 @@ app.post("/query", async (req, res) => {
 
 app.use("/device", deviceRouter);
 
-// catch 404 and forward to error handler
-app.use(function (req, res, next) {
-    next(createError(404));
-});
-
 // error handler
 app.use(function (err, req, res, next) {
+    if (!err) {
+        err = errors.error(404, 'Not found.');
+    }
+
     // set locals, only providing error in development
     res.locals.message = err.message;
     res.locals.error = req.app.get('env') === 'development' ? err : {};
 
     // render the error page
-    res.status(err.status || 500);
+    res.status(err.statusCode || 500);
     res.render('error');
 });
 
