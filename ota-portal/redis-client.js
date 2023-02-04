@@ -14,4 +14,18 @@ async function execute(command, args) {
     return p;
 }
 
-module.exports = execute;
+async function setObj(key, obj) {
+    const args = [key];
+
+    Object.keys(obj).forEach((attr) => {
+        args.push(attr);
+        args.push(obj[attr]);
+    });
+
+    return await execute("hset", args);
+}
+
+module.exports = {
+    execute: execute,
+    setObj: setObj
+};

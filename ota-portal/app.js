@@ -52,7 +52,7 @@ app.post("/query", async (req, res) => {
     let query = req.body.split(' ');
     let queryArgs = query.slice(1);
 
-    [err, reply] = await rclient(query[0], queryArgs);
+    [err, reply] = await rclient.execute(query[0], queryArgs);
     processRedisResponse(res, err, reply);
 });
 

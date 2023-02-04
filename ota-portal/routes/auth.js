@@ -62,7 +62,7 @@ router.use(async function(req, res, next) {
             errors.error(401, "Invalid token.");
         }
 
-        [err, userEntry] = await rclient('hgetall', [`user:${tokenUser.username}`]);
+        [err, userEntry] = await rclient.execute('hgetall', [`user:${tokenUser.username}`]);
 
         req.user = {
             id: userEntry.id,
@@ -118,13 +118,20 @@ router.post("/createAccount", async function(req, res, next) {
         const userKey = "user:" + req.body.username;
         
         // check if user exists
-        [err, reply] = await rclient("keys", [userKey]);
+        [err, reply] = await rclient.execute("keys", [userKey]);
         if (reply && reply.length !== 0) {
             errors.error(400, `Username exists.`);
         }
 
         // create user entry
-        [err, reply] = await rclient("hset", [userKey, "email", req.body.email, "password", req.body.password, "name", req.body.name, "type", "user", "curSession", "", "curSessionExpiry", 0]);
+        [err, reply] = await rclient.setObj(userKey, {
+            email: req.body.email,
+            password: req.body.password,
+            name: req.body.name,
+            type: "user",
+            curSession: "",
+            curSessionExpiry: 0
+        });
         if (err) {
             errors.error(500, "Error creating user");
         }
@@ -174,12 +181,12 @@ router.post("/login", async function(req, res, next) {
 
         const userKey = "user:" + req.body.username;
         
-        [err, reply] = await rclient("keys", [userKey]);
+        [err, reply] = await rclient.execute("keys", [userKey]);
         if (!reply || reply.length === 0) {
             errors.error(404, `User not found.`);
         }
 
-        [err, reply] = await rclient("hget", [userKey, "password"]);
+        [err, reply] = await rclient.execute("hget", [userKey, "password"]);
         if (!reply || reply !== req.body.password) {
             errors.error(403, 'Incorrect password.');
         }
@@ -189,7 +196,10 @@ router.post("/login", async function(req, res, next) {
         const curSessionExpiry = Date.now() + 30000;
 
         // update session token in DB
-        [err, reply] = await rclient("hset", [userKey, "curSession", curSession, "curSessionExpiry", curSessionExpiry]);
+        [err, reply] = await rclient.setObj(userKey, {
+            curSession: curSession,
+            curSessionExpiry: curSessionExpiry
+        });
 
         // return encrypted token
         const session = {
@@ -221,7 +231,10 @@ router.all("/logout", async function(req, res, next) {
 
         const userKey = "user:" + req.user.username;
 
-        [err, reply] = await rclient("hset", [userKey, "curSession", "", "curSessionExpiry", 0]);
+        [err, reply] = await rclient.setObj(userKey, {
+            curSession: "",
+            curSessionExpiry: 0
+        });
     }
 
     res.redirect("/login");
