@@ -62,7 +62,13 @@ router.use(async function(req, res, next) {
             errors.error(401, "Invalid token.");
         }
 
-        [err, userEntry] = await rclient.execute('hgetall', [`user:${tokenUser.username}`]);
+        [err, userEntry] = await rclient.getObj("user:" + tokenUser.username);
+        if (tokenUser.curSession !== userEntry.curSession) {
+            errors.error(401, "Invalid token.");
+        }
+        else if (userEntry.curSessionExpiry < Date.now()) {
+            errors.error(401, "Session expired");
+        }
 
         req.user = {
             id: userEntry.id,
@@ -80,11 +86,7 @@ router.use(async function(req, res, next) {
     else {
         res.clearCookie("jamota-token");
 
-        if (req.method === "GET") {
-            res.redirect("/login");
-        } else {
-            next(httperror);
-        }
+        res.redirect("/login");
     }
 });
 
@@ -123,10 +125,18 @@ router.post("/createAccount", async function(req, res, next) {
             errors.error(400, `Username exists.`);
         }
 
+        // generate password hash
+        const passSalt = crypto.randomBytes(16).toString("hex");
+        const passHash = crypto
+            .createHmac("sha512", passSalt)
+            .update(req.body.password)
+            .digest("hex");
+
         // create user entry
         [err, reply] = await rclient.setObj(userKey, {
             email: req.body.email,
-            password: req.body.password,
+            passHash: passHash,
+            passSalt: passSalt,
             name: req.body.name,
             type: "user",
             curSession: "",
@@ -186,9 +196,19 @@ router.post("/login", async function(req, res, next) {
             errors.error(404, `User not found.`);
         }
 
-        [err, reply] = await rclient.execute("hget", [userKey, "password"]);
-        if (!reply || reply !== req.body.password) {
+        // generate password hash
+        [err, reply] = await rclient.getObj(userKey);
+        const passHash = crypto
+            .createHmac("sha512", reply.passSalt)
+            .update(req.body.password)
+            .digest("hex");
+
+        if (!reply || passHash !== reply.passHash) {
             errors.error(403, 'Incorrect password.');
+        }
+
+        if (reply.curSession && reply.curSessionExpiry > Date.now()) {
+            errors.error(400, "User already logged in.");
         }
 
         // generate session token
@@ -222,9 +242,6 @@ router.post("/login", async function(req, res, next) {
 
 // logout
 router.all("/logout", async function(req, res, next) {
-    res.clearCookie("jamota-token");
-    res.clearCookie("jamota-token-expiry");
-
     if (req.user) {
         res.clearCookie("jamota-token");
         res.clearCookie("jamota-token-expiry");

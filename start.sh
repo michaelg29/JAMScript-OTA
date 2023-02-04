@@ -34,33 +34,31 @@ while getopts ":r:p:" o; do
     esac
 done
 
-num_start=0
+num_fg=0
 if [ "start" = "$redis_opt" ]
 then
     echo "Starting Redis server"
     ./redis/redis.sh
-    num_start+=1
+    num_fg+=1
 elif [ "bg" = "$redis_opt" ]
 then
     echo "Starting Redis server in background"
     ./redis/redis.sh &
-    num_start+=1
 fi
 
 if [ "start" = "$portal_opt" ]
 then
     echo "Starting portal"
     ./ota-portal/ota-portal.sh
-    num_start+=1
+    num_fg+=1
 elif [ "bg" = "$portal_opt" ]
 then
     echo "Starting portal in background"
-    ./ota-portal/ota-portal.sh
-    num_start+=1
+    ./ota-portal/ota-portal.sh &
 fi
 
-if [ 0 -eq $num_start ]
+if [ 0 -eq $num_fg ]
 then
-    echo "Did not start any processes"
+    echo "Did not start any foreground processes"
     usage
 fi

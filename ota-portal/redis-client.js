@@ -25,7 +25,12 @@ async function setObj(key, obj) {
     return await execute("hset", args);
 }
 
+async function getObj(key) {
+    return await execute("hgetall", [key]);
+}
+
 module.exports = {
     execute: execute,
-    setObj: setObj
+    setObj: setObj,
+    getObj: getObj,
 };

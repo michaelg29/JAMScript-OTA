@@ -7,13 +7,6 @@ then
     requirepass_arg=" --requirepass ${REDISCLI_AUTH}"
 fi
 
-# optional account
-user_arg=
-if [ -n ${REDIS_USER} ]
-then
-    user_arg=" --user ${REDIS_USER} +@all ~* on \">${REDIS_PASSWORD}\""
-fi
-
 # optional hostname
 host_arg=
 if [ -n ${REDIS_HOST} ]
