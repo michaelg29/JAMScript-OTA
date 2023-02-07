@@ -2,7 +2,7 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const path = require('path');
-const errors = require('./httperror');
+const errors = require('./utils/httperror');
 
 const auth = require('./routes/auth');
 const deviceRouter = require('./routes/device');

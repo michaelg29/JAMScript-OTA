@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const errors = require('../httperror');
+const errors = require('../utils/httperror');
 
 const rclient = require('../redis-client');
 

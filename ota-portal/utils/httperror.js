@@ -1,4 +1,3 @@
-var createError = require('http-errors');
 
 function error(statusCode, message, extendedCode) {
     throw {
