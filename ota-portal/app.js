@@ -7,7 +7,7 @@ const errors = require('./utils/httperror');
 const auth = require('./routes/auth');
 const deviceRouter = require('./routes/device');
 
-const rclient = require('./redis-client');
+const rclient = require('./utils/redis-client');
 
 var app = express();
 

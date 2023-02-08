@@ -6,12 +6,11 @@ const rclient = redis.createClient({
 });
 
 async function execute(command, args) {
-    var p = new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
         rclient.send_command(command, args, function(err, res) {
             resolve([err, res]);
         });
     });
-    return p;
 }
 
 async function setObj(key, obj) {

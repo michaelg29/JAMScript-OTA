@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const errors = require('../utils/httperror');
-
-const rclient = require('../redis-client');
+const rclient = require('../utils/redis-client');
 
 const crypto = require('crypto');
 const algorithm = 'aes-256-cbc';
@@ -12,6 +11,9 @@ const key = !!process.env.PORTAL_TOKEN_ENC_KEY
 const iv = !!process.env.PORTAL_TOKEN_ENC_IV
     ? Buffer.from(process.env.PORTAL_TOKEN_ENC_IV)
     : crypto.randomBytes(8);
+
+const tokenCookieName = "jamota-token";
+const tokenExpiryCookieName = "jamota-token-expiry";
 
 const base64url = require('base64url').default;
 
@@ -39,6 +41,29 @@ function decryptToken(token) {
     return JSON.parse(decrypted.toString());
 }
 
+async function refreshToken(username, userKey) {
+    // generate session token
+    const curSession = base64url.encode(crypto.randomBytes(16));
+    const curSessionExpiry = Date.now() + 30 * 60000;
+
+    // update session token in DB
+    [err, reply] = await rclient.setObj(userKey, {
+        curSession: curSession,
+        curSessionExpiry: curSessionExpiry
+    });
+
+    // return encrypted token
+    const session = {
+        "username": username,
+        "curSession": curSession
+    };
+
+    return {
+        token: encryptToken(session),
+        expiry: curSessionExpiry
+    };
+}
+
 // access token decoder
 router.use(async function(req, res, next) {
     if (req.url === "/login" || req.url === "/createAccount") {
@@ -49,27 +74,28 @@ router.use(async function(req, res, next) {
     let httperror = undefined;
 
     try {
-        if (!req.cookies['jamota-token']) {
+        const token = req.headers.authorization || req.cookies[tokenCookieName];
+        if (!token) {
             errors.error(401, "Missing token.");
         }
 
-        // decrypt token
-        const token = req.cookies['jamota-token'];
-
-        // parse token and ensure has required fields
+        // decrypt and parse parse token and ensure has required fields
         const tokenUser = decryptToken(token);
         if (!tokenUser || !tokenUser.curSession || !tokenUser.username) {
             errors.error(401, "Invalid token.");
         }
 
-        [err, userEntry] = await rclient.getObj("user:" + tokenUser.username);
+        // validate current session
+        const userKey = "user:" + tokenUser.username;
+        [err, userEntry] = await rclient.getObj(userKey);
         if (tokenUser.curSession !== userEntry.curSession) {
-            errors.error(401, "Invalid token.");
+            errors.error(401, "Mismatched token.");
         }
         else if (userEntry.curSessionExpiry < Date.now()) {
             errors.error(401, "Session expired");
         }
 
+        // set user object in web server
         req.user = {
             id: userEntry.id,
             username: tokenUser.username,
@@ -84,15 +110,30 @@ router.use(async function(req, res, next) {
         next();
     }
     else {
-        res.clearCookie("jamota-token");
+        res.clearCookie(tokenCookieName);
 
         res.redirect("/login");
     }
 });
 
+router.post("/refreshToken", async function(req, res, next) {
+    if (req.user) {
+        const userKey = "user:" + req.user.username;
+
+        const token = await refreshToken(req.user.username, userKey);
+
+        res.cookie(tokenCookieName, token.token);
+        res.cookie(tokenExpiryCookieName, token.expiry);
+
+        res.status(200).send(token);
+    } else {
+        next(errors.errorObj(401, "Not authorized to refresh an access token."));
+    }
+});
+
 // registration form
 router.get("/createAccount", function(req, res, next) {
-    res.clearCookie("jamota-token");
+    res.clearCookie(tokenCookieName);
 
     res.send(
         '<form action="/createAccount" method="POST">'
@@ -109,7 +150,7 @@ router.get("/createAccount", function(req, res, next) {
 
 // create account request
 router.post("/createAccount", async function(req, res, next) {
-    res.clearCookie("jamota-token");
+    res.clearCookie(tokenCookieName);
     let httperror = undefined;
 
     try {
@@ -198,6 +239,10 @@ router.post("/login", async function(req, res, next) {
 
         // generate password hash
         [err, reply] = await rclient.getObj(userKey);
+        if (reply.curSession && reply.curSessionExpiry > Date.now()) {
+            errors.error(400, "User already logged in.");
+        }
+
         const passHash = crypto
             .createHmac("sha512", reply.passSalt)
             .update(req.body.password)
@@ -207,27 +252,10 @@ router.post("/login", async function(req, res, next) {
             errors.error(403, 'Incorrect password.');
         }
 
-        if (reply.curSession && reply.curSessionExpiry > Date.now()) {
-            errors.error(400, "User already logged in.");
-        }
-
         // generate session token
-        const curSession = base64url.encode(crypto.randomBytes(16));
-        const curSessionExpiry = Date.now() + 30000;
-
-        // update session token in DB
-        [err, reply] = await rclient.setObj(userKey, {
-            curSession: curSession,
-            curSessionExpiry: curSessionExpiry
-        });
-
-        // return encrypted token
-        const session = {
-            "username": req.body.username,
-            "curSession": curSession
-        };
-        res.cookie("jamota-token", encryptToken(session));
-        res.cookie("jamota-token-expiry", curSessionExpiry);
+        const newToken = await refreshToken(req.body.username, userKey);
+        res.cookie(tokenCookieName, newToken.token);
+        res.cookie(tokenExpiryCookieName, newToken.expiry);
     } catch (error) {
         httperror = error;
     }
@@ -243,8 +271,8 @@ router.post("/login", async function(req, res, next) {
 // logout
 router.all("/logout", async function(req, res, next) {
     if (req.user) {
-        res.clearCookie("jamota-token");
-        res.clearCookie("jamota-token-expiry");
+        res.clearCookie(tokenCookieName);
+        res.clearCookie(tokenExpiryCookieName);
 
         const userKey = "user:" + req.user.username;
 
