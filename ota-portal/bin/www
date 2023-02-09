@@ -6,23 +6,26 @@
 var app = require('../app');
 var http = require('http');
 var https = require('https');
+var fs = require('fs');
 
 /**
  * Get port from environment and store in Express.
  */
-var port = normalizePort(process.env.OTA_PORT || '8080');
+let port;
 
 /**
  * Create HTTP server.
  */
 let server;
 if (process.env.PORTAL_PROTOCOL === 'https') {
-  var pkey = fs.readFileSync("cs.mcgill.ca.key");
-  var cert = fs.readFileSync("/etc/ssl/certs/cs.mcgill.ca.crt");
+  var pkey = fs.readFileSync(process.env.PORTAL_HTTPS_PKEY_PATH);
+  var cert = fs.readFileSync(process.env.PORTAL_HTTPS_CERT_PATH);
   server = https.createServer({key: pkey, cert: cert}, app);
+  port = normalizePort(process.env.PORTAL_PORT || '8443');
 }
 else {
   server = http.createServer(app);
+  port = normalizePort(process.env.PORTAL_PORT || '8080');
 }
 
 /**
