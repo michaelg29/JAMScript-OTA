@@ -1,0 +1,14 @@
+extends layout
+
+block content
+
+  table(class="welcome")
+    thead
+    tbody
+      tr
+        p <a href="https://localhost:3000/logout">Logout</a>
+        h1 Hi #{name}, Welcome to the Over-The-Air Update Console for JAMScript
+
+      tr 
+        h2 List all machines
+        p To see all machines, click <a href="http://localhost:3000/list">http://localhost:3000/list</a>
