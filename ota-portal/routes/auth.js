@@ -64,55 +64,58 @@ async function refreshToken(username, userKey) {
     };
 }
 
+async function logout(req, res) {
+    if (req.user) {
+        res.clearCookie(tokenCookieName);
+        res.clearCookie(tokenExpiryCookieName);
+
+        const userKey = "user:" + req.user.username;
+
+        [err, reply] = await rclient.setObj(userKey, {
+            curSession: "",
+            curSessionExpiry: 0
+        });
+    }
+}
+
 // access token decoder
-router.use(async function(req, res, next) {
+router.use(errors.asyncWrap(async function(req, res, next) {
     if (req.url === "/login" || req.url === "/createAccount") {
         next();
         return;
     }
 
-    let httperror = undefined;
-
-    try {
-        const token = req.headers.authorization || req.cookies[tokenCookieName];
-        if (!token) {
-            errors.renderError(401, "", "login");
-        }
-
-        // decrypt and parse parse token and ensure has required fields
-        const tokenUser = decryptToken(token);
-        if (!tokenUser || !tokenUser.curSession || !tokenUser.username) {
-            errors.renderError(401, "Invalid session", "login");
-        }
-
-        // validate current session
-        const userKey = "user:" + tokenUser.username;
-        [err, userEntry] = await rclient.getObj(userKey);
-        if (tokenUser.curSession !== userEntry.curSession) {
-            errors.renderError(401, "Invalid session", "login");
-        }
-        else if (userEntry.curSessionExpiry < Date.now()) {
-            errors.renderError(401, "Session expired", "login");
-        }
-
-        // set user object in web server
-        req.user = {
-            id: userEntry.id,
-            username: tokenUser.username,
-            curSession: tokenUser.curSession,
-            name: userEntry.name
-        }
-    } catch (error) {
-        httperror = error;
-        res.clearCookie(tokenCookieName);
-        res.clearCookie(tokenExpiryCookieName);
-        next(error);
+    const token = req.headers.authorization || req.cookies[tokenCookieName];
+    if (!token) {
+        errors.error(401, "", "login");
     }
 
-    if (!httperror) {
-        next();
+    // decrypt and parse parse token and ensure has required fields
+    const tokenUser = decryptToken(token);
+    if (!tokenUser || !tokenUser.curSession || !tokenUser.username) {
+        errors.error(401, "Invalid session", "login");
     }
-});
+
+    // validate current session
+    const userKey = "user:" + tokenUser.username;
+    [err, userEntry] = await rclient.getObj(userKey);
+    if (tokenUser.curSession !== userEntry.curSession) {
+        errors.error(401, "Invalid session", "login");
+    }
+    else if (userEntry.curSessionExpiry < Date.now()) {
+        errors.error(401, "Session expired", "login");
+    }
+
+    // set user object in web server
+    req.user = {
+        id: userEntry.id,
+        username: tokenUser.username,
+        curSession: tokenUser.curSession,
+        name: userEntry.name
+    }
+
+    next();
+}));
 
 router.post("/refreshToken", async function(req, res, next) {
     if (req.user) {
@@ -131,70 +134,46 @@ router.post("/refreshToken", async function(req, res, next) {
 
 // registration form
 router.get("/createAccount", function(req, res, next) {
-    res.clearCookie(tokenCookieName);
-
-    res.send(
-        '<form action="/createAccount" method="POST">'
-        + '<h2>Create Account</h2>'
-        + '<p>Name: <input name="name"></p>'
-        + '<p>Email: <input name="email"></p>'
-        + '<p>Username: <input name="username"></p>'
-        + '<p>Password: <input type="password" name="password"></p>'
-        + '<p><input type="submit" value="Create account"></p>'
-        + '<p style="color: red;"></p>'
-        + '</form>'
-    );
+    res.render("createAccount");
 });
 
 // create account request
-router.post("/createAccount", async function(req, res, next) {
-    res.clearCookie(tokenCookieName);
-    let httperror = undefined;
-
-    try {
-        if (!req.body || !req.body.email || !req.body.username || !req.body.password || !req.body.name) {
-            errors.error(400, "Invalid input.");
-        }
-
-        const userKey = "user:" + req.body.username;
-        
-        // check if user exists
-        [err, reply] = await rclient.execute("keys", [userKey]);
-        if (reply && reply.length !== 0) {
-            errors.error(400, `Username exists.`);
-        }
-
-        // generate password hash
-        const passSalt = crypto.randomBytes(16).toString("hex");
-        const passHash = crypto
-            .createHmac("sha512", passSalt)
-            .update(req.body.password)
-            .digest("hex");
-
-        // create user entry
-        [err, reply] = await rclient.setObj(userKey, {
-            email: req.body.email,
-            passHash: passHash,
-            passSalt: passSalt,
-            name: req.body.name,
-            type: "user",
-            curSession: "",
-            curSessionExpiry: 0
-        });
-        if (err) {
-            errors.error(500, "Error creating user");
-        }
-    } catch(error) {
-        httperror = error;
+router.post("/createAccount", errors.asyncWrap(async function(req, res, next) {
+    if (!req.body || !req.body.email || !req.body.username || !req.body.password || !req.body.name) {
+        errors.error(400, "Invalid input.");
     }
 
-    if (!httperror) {
-        res.redirect("/login");
+    const userKey = "user:" + req.body.username;
+    
+    // check if user exists
+    [err, reply] = await rclient.execute("keys", [userKey]);
+    if (reply && reply.length !== 0) {
+        errors.error(400, `Username exists.`);
     }
-    else {
-        next(httperror);
+
+    // generate password hash
+    const passSalt = crypto.randomBytes(16).toString("hex");
+    const passHash = crypto
+        .createHmac("sha512", passSalt)
+        .update(req.body.password)
+        .digest("hex");
+
+    // create user entry
+    [err, reply] = await rclient.setObj(userKey, {
+        email: req.body.email,
+        passHash: passHash,
+        passSalt: passSalt,
+        name: req.body.name,
+        type: "user",
+        curSession: "",
+        curSessionExpiry: 0
+    });
+    if (err) {
+        errors.error(500, "Error creating user");
     }
-});
+
+    res.redirect("/login");
+}));
 
 // login form
 router.get("/login", function(req, res, next) {
@@ -207,71 +186,49 @@ router.get("/login", function(req, res, next) {
 });
 
 // login request
-router.post("/login", async function(req, res, next) {
+router.post("/login", errors.asyncWrap(async function(req, res, next) {
     if (req.user) {
         res.sendStatus(200);
         return;
     }
 
-    let httperror = undefined;
-
-    try {
-        if (!req.body || !req.body.username || !req.body.password) {
-            errors.error(400, 'Invalid input.');
-        }
-
-        const userKey = "user:" + req.body.username;
-        
-        [err, reply] = await rclient.execute("keys", [userKey]);
-        if (!reply || reply.length === 0) {
-            errors.renderError(404, "User not found.", "login");
-        }
-
-        // generate password hash
-        [err, reply] = await rclient.getObj(userKey);
-        if (reply.curSession && reply.curSessionExpiry > Date.now()) {
-            errors.renderError(400, "User already logged in.", "login");
-        }
-
-        const passHash = crypto
-            .createHmac("sha512", reply.passSalt)
-            .update(req.body.password)
-            .digest("hex");
-
-        if (!reply || passHash !== reply.passHash) {
-            errors.renderError(403, "Incorrect password.", "login");
-        }
-
-        // generate session token
-        const newToken = await refreshToken(req.body.username, userKey);
-        res.cookie(tokenCookieName, newToken.token);
-        res.cookie(tokenExpiryCookieName, newToken.expiry);
-    } catch (error) {
-        httperror = error;
+    if (!req.body || !req.body.username || !req.body.password) {
+        errors.error(400, 'Invalid input.');
     }
 
-    if (!httperror) {
-        res.redirect("/");
+    const userKey = "user:" + req.body.username;
+
+    [err, reply] = await rclient.execute("keys", [userKey]);
+    if (!reply || reply.length === 0) {
+        errors.error(404, "User not found.", "login");
     }
-    else {
-        next(httperror);
+
+    // generate password hash
+    [err, reply] = await rclient.getObj(userKey);
+    if (reply.curSession && reply.curSessionExpiry > Date.now()) {
+        errors.error(400, "User already logged in.", "login");
     }
-});
+
+    const passHash = crypto
+        .createHmac("sha512", reply.passSalt)
+        .update(req.body.password)
+        .digest("hex");
+
+    if (!reply || passHash !== reply.passHash) {
+        errors.error(403, "Incorrect password.", "login");
+    }
+
+    // generate session token
+    const newToken = await refreshToken(req.body.username, userKey);
+    res.cookie(tokenCookieName, newToken.token);
+    res.cookie(tokenExpiryCookieName, newToken.expiry);
+
+    res.redirect("/");
+}));
 
 // logout
 router.all("/logout", async function(req, res, next) {
-    if (req.user) {
-        res.clearCookie(tokenCookieName);
-        res.clearCookie(tokenExpiryCookieName);
-
-        const userKey = "user:" + req.user.username;
-
-        [err, reply] = await rclient.setObj(userKey, {
-            curSession: "",
-            curSessionExpiry: 0
-        });
-    }
-
+    logout(req, res);
     res.redirect("/login");
 });
 

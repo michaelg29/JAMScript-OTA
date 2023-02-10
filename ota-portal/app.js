@@ -59,7 +59,7 @@ app.post("/query", async (req, res) => {
 app.use("/node", nodeRouter);
 
 app.use(function (req, res, next) {
-    next(errors.errorPage(404, "Not found."));
+    next(errors.errorObj(404, "Not found."));
 });
 
 // error handler
@@ -71,9 +71,9 @@ app.use(function (err, req, res, next) {
     err.statusCode = err.statusCode || 500;
     res.status(err.statusCode);
 
-    if (!!err.renderHTML) {
+    if (req.headers["Accept"] !== "application/json") {
         var route = "error";
-        if (typeof err.renderHTML === "string") {
+        if (err.renderHTML && typeof err.renderHTML === "string") {
             route = err.renderHTML;
         }
 
@@ -84,7 +84,7 @@ app.use(function (err, req, res, next) {
         res.send({
             statusCode: err.statusCode,
             message: err.message,
-            extendedCode: err.extendedCode
+            error: req.app.get("env") === "development" ? err : {}
         });
     }
 });
