@@ -6,14 +6,17 @@ block content
     thead
     tbody
       tr
-        p <a href="https://localhost:3000/logout">Logout</a>
         h1 Hi #{name}, Welcome to the Over-The-Air Update Console for JAMScript
 
         p
           | query:
           input(type="text", id="query")
-
         input(type="button", value="submit", id="submit")
+
+        p
+          | route:
+          input(type="text", id="route")
+        input(type="button", value="Request", id="routeRequest")
 
         p(id="output")
 

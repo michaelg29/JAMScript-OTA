@@ -1,0 +1,17 @@
+extends layout
+
+block content
+
+  h2 Login
+  form(method="POST", action="/login")
+    p
+      | Username:
+      input(type="text", name="username")
+
+    p
+      | Password:
+      input(type="password", name="password")
+
+    input(type="submit", value="Login")
+
+    p(class="error-msg") #{message}

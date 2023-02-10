@@ -27,13 +27,13 @@ async function sendRequest(method, endpoint, headers, body = undefined, response
             resolve({
                 status: request.status,
                 data: request.response,
-                headers: request.getAllResponseHeaders()
+                headers: request.getAllResponseHeaders().split("\r\n")
             });
         }
     })
 }
 
-async function dataRequest(method, endpoint, headers, body, responseType) {
+async function dataRequest(method, endpoint, headers, body, contentType = "application/json", responseType = "json") {
     var expiry;
     var token;
 
@@ -53,13 +53,28 @@ async function dataRequest(method, endpoint, headers, body, responseType) {
     }
 
     if (!headers) {
-        headers = {
-            authorization: token
-        }
+        headers = {}
     }
-    else if (!headers.authorization) {
-        headers.authorization = token;
+
+    // auto-fill header values
+    if (!headers["authorization"]) {
+        headers["authoriation"] = token;
+    }
+    if (!headers["Content-Type"]) {
+        headers["Content-Type"] = contentType;
+    }
+
+    if (headers["Content-Type"] === "application/json" && typeof body === "object") {
+        body = JSON.stringify(body);
     }
 
     return await sendRequest(method, endpoint, headers, body, responseType);
+}
+
+async function post(endpoint, headers, body, contentType = "application/json", responseType = "json") {
+    return await dataRequest("POST", method, headers, body, contentType, responseType);
+}
+
+async function get(endpoint, headers, body, contentType = "application/json", responseType = "json") {
+    return await dataRequest("GET", method, headers, body, contentType, responseType);
 }

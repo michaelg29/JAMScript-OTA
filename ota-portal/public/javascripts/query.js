@@ -10,3 +10,14 @@ submit.onclick = async function() {
 
     output.innerHTML = res.data;
 };
+
+var reqSubmit = document.getElementById("routeRequest");
+reqSubmit.onclick = async function() {
+    let node = {
+        type: "device"
+    }
+
+    let res = await dataRequest("POST", "node", undefined, node);
+
+    console.log(res.data, res.status, res.headers);
+}

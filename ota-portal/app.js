@@ -5,7 +5,7 @@ const path = require('path');
 const errors = require('./utils/httperror');
 
 const auth = require('./routes/auth');
-const deviceRouter = require('./routes/device');
+const nodeRouter = require('./routes/node');
 
 const rclient = require('./utils/redis-client');
 
@@ -14,7 +14,7 @@ var app = express();
 // middleware
 app.use(logger('dev'));
 app.use(express.text({
-    type: 'text/*'
+    type: "text/*"
 }));
 app.use(express.json());
 app.use(express.urlencoded({
@@ -56,21 +56,37 @@ app.post("/query", async (req, res) => {
     processRedisResponse(res, err, reply);
 });
 
-app.use("/device", deviceRouter);
+app.use("/node", nodeRouter);
+
+app.use(function (req, res, next) {
+    next(errors.errorPage(404, "Not found."));
+});
 
 // error handler
 app.use(function (err, req, res, next) {
-    if (!err) {
-        err = errors.error(404, 'Not found.');
-    }
-
     // set locals, only providing error in development
     res.locals.message = err.message;
     res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-    // render the error page
-    res.status(err.statusCode || 500);
-    res.render('error');
+    err.statusCode = err.statusCode || 500;
+    res.status(err.statusCode);
+
+    if (!!err.renderHTML) {
+        var route = "error";
+        if (typeof err.renderHTML === "string") {
+            route = err.renderHTML;
+        }
+
+        // render the error page
+        res.render(route);
+    }
+    else {
+        res.send({
+            statusCode: err.statusCode,
+            message: err.message,
+            extendedCode: err.extendedCode
+        });
+    }
 });
 
 module.exports = app;

@@ -76,23 +76,23 @@ router.use(async function(req, res, next) {
     try {
         const token = req.headers.authorization || req.cookies[tokenCookieName];
         if (!token) {
-            errors.error(401, "Missing token.");
+            errors.renderError(401, "", "login");
         }
 
         // decrypt and parse parse token and ensure has required fields
         const tokenUser = decryptToken(token);
         if (!tokenUser || !tokenUser.curSession || !tokenUser.username) {
-            errors.error(401, "Invalid token.");
+            errors.renderError(401, "Invalid session", "login");
         }
 
         // validate current session
         const userKey = "user:" + tokenUser.username;
         [err, userEntry] = await rclient.getObj(userKey);
         if (tokenUser.curSession !== userEntry.curSession) {
-            errors.error(401, "Mismatched token.");
+            errors.renderError(401, "Invalid session", "login");
         }
         else if (userEntry.curSessionExpiry < Date.now()) {
-            errors.error(401, "Session expired");
+            errors.renderError(401, "Session expired", "login");
         }
 
         // set user object in web server
@@ -104,15 +104,13 @@ router.use(async function(req, res, next) {
         }
     } catch (error) {
         httperror = error;
+        res.clearCookie(tokenCookieName);
+        res.clearCookie(tokenExpiryCookieName);
+        next(error);
     }
 
     if (!httperror) {
         next();
-    }
-    else {
-        res.clearCookie(tokenCookieName);
-
-        res.redirect("/login");
     }
 });
 
@@ -204,15 +202,7 @@ router.get("/login", function(req, res, next) {
         res.redirect("/");
     }
     else {
-        res.send(
-            '<form action="/login" method="POST">'
-            + '<h2>Login</h2>'
-            + '<p>Username: <input name="username"></p>'
-            + '<p>Password: <input type="password" name="password"></p>'
-            + '<p><input type="submit" value="Login"></p>'
-            + '<p style="color: red;"></p>'
-            + '</form>'
-        );
+        res.render("login");
     }
 });
 
@@ -234,13 +224,13 @@ router.post("/login", async function(req, res, next) {
         
         [err, reply] = await rclient.execute("keys", [userKey]);
         if (!reply || reply.length === 0) {
-            errors.error(404, `User not found.`);
+            errors.renderError(404, "User not found.", "login");
         }
 
         // generate password hash
         [err, reply] = await rclient.getObj(userKey);
         if (reply.curSession && reply.curSessionExpiry > Date.now()) {
-            errors.error(400, "User already logged in.");
+            errors.renderError(400, "User already logged in.", "login");
         }
 
         const passHash = crypto
@@ -249,7 +239,7 @@ router.post("/login", async function(req, res, next) {
             .digest("hex");
 
         if (!reply || passHash !== reply.passHash) {
-            errors.error(403, 'Incorrect password.');
+            errors.renderError(403, "Incorrect password.", "login");
         }
 
         // generate session token

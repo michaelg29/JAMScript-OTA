@@ -22,10 +22,9 @@ function validateBody(req, bodyFields) {
         errors.error(400, "Missing fields: " + missingFields.join(", "));
     }
 
-    return true;
+    return req.body;
 }
 
 module.exports = {
     validateBody: validateBody,
-    test: test
 }
