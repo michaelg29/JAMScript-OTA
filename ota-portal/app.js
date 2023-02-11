@@ -75,7 +75,15 @@ app.use(function (err, req, res, next) {
     err.statusCode = err.statusCode || 500;
     res.status(err.statusCode);
 
-    if (req.headers["Accept"] !== "application/json") {
+    const returnType = req.headers.accept;
+    if (returnType === "application/json") {
+        res.send({
+            statusCode: err.statusCode,
+            message: err.message,
+            error: req.app.get("env") === "development" ? err : {}
+        });
+    }
+    else if (returnType === "text/html") {
         var route = "error";
         if (err.renderHTML && typeof err.renderHTML === "string") {
             route = err.renderHTML;
@@ -85,11 +93,7 @@ app.use(function (err, req, res, next) {
         res.render(route);
     }
     else {
-        res.send({
-            statusCode: err.statusCode,
-            message: err.message,
-            error: req.app.get("env") === "development" ? err : {}
-        });
+        res.send(err.message + "\n");
     }
 });
 

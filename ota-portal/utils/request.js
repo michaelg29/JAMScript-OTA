@@ -19,7 +19,7 @@ function validateBody(req, bodyFields) {
     }
 
     if (missingFields.length) {
-        errors.error(400, "Missing fields: " + missingFields.join(", "));
+        errors.error(400, `Missing fields: ${missingFields.join(", ")}.`);
     }
 
     return req.body;
