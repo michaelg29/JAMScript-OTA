@@ -6,16 +6,20 @@ const rclient = require("./../utils/redis-client");
 const errors = require("./../utils/httperror");
 const request = require("./../utils/request");
 
-const nodeTypes = ["device", "fog", "cloud"];
+const node = require("./../utils/node");
 
-function nodeKey(uuid) {
-    return "node:" + uuid;
-}
+router.get("/", errors.asyncWrap(async function(req, res, next) {
+    res.render("node/list");
+}));
+
+router.get("/reserve", function(req, res, next) {
+    res.render("node/reserve");
+});
 
 router.post("/", errors.asyncWrap(async function(req, res, next) {
-    const node = request.validateBody(req, ["type"]);
-    if (!nodeTypes.includes(node.type)) {
-        errors.error(400, `Invalid node type, must be one of: ${nodeTypes.join(", ")}.`);
+    const nodeReq = request.validateBody(req, ["name", "type"]);
+    if (!node.validType(nodeReq.type)) {
+        errors.error(400, `Invalid node type, must be one of: ${node.typesList}.`, "node/reserve");
     }
 
     // generate new uuid
@@ -24,7 +28,7 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
     while (true) {
         uuid = rclient.createGUID();
 
-        key = nodeKey(uuid);
+        key = node.nodeKey(uuid);
         [err, redisRes] = await rclient.execute("keys", [key]);
         if (!redisRes || redisRes.length === 0) {
             break;
@@ -36,21 +40,19 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
 
     // create node entry
     [err, redisRes] = await rclient.setObj(key, {
-        name: "",
-        type: node.type,
+        name: nodeReq.name,
+        type: nodeReq.type,
         mac: "",
-        publicKey: "",
+        pubKey: "",
         regKey: regKey,
         user_username: req.user.username,
         createdOn: Date.now(),
         registeredOn: 0,
-        lastRefreshedOn: 0
+        lastRefreshedOn: 0,
+        status: node.statuses.CREATED
     });
 
-    res.send({
-        nodeId: uuid,
-        regKey: regKey
-    });
+    res.redirect("/ijam/register/" + uuid);
 }));
 
 module.exports = router;

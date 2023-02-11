@@ -1,0 +1,21 @@
+extends ../layout
+
+block content
+
+  h2 Register
+  form(method="POST", action="/nodes")
+    p
+      | Name:
+      input(type="text", name="name")
+
+    p
+      | Node type:
+      select(name="type")
+        option(value="") -- Select Node Type --
+        option(value="device") Device
+        option(value="fog") Fog
+        option(value="cloud") Cloud
+
+    input(type="submit", value="Create Node")
+
+    p(class="error-msg") #{message}

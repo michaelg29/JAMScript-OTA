@@ -1,4 +1,27 @@
 
+window.onload = getAuthorization;
+
+async function getAuthorization() {
+    var expiry;
+    var token;
+
+    for (let cookie of document.cookie.split("; ")) {
+        var keyVal = cookie.split("=");
+        if (keyVal[0] === "jamota-token-expiry") {
+            expiry = Number.parseInt(keyVal[1]);
+        }
+        else if (keyVal[0] === "jamota-token") {
+            token = keyVal[1];
+        }
+    }
+
+    if (expiry < Date.now() + 60000) {
+        // if expiry within a minute, refresh the token
+        token = (await refreshToken(token)).token;
+    }
+
+    return token;
+}
 
 async function refreshToken(accessToken) {
     // if expiry within a minute, refresh the token
@@ -34,23 +57,7 @@ async function sendRequest(method, endpoint, headers, body = undefined, response
 }
 
 async function dataRequest(method, endpoint, headers, body, contentType = "application/json", responseType = "json") {
-    var expiry;
-    var token;
-
-    for (let cookie of document.cookie.split("; ")) {
-        var keyVal = cookie.split("=");
-        if (keyVal[0] === "jamota-token-expiry") {
-            expiry = Number.parseInt(keyVal[1]);
-        }
-        else if (keyVal[0] === "jamota-token") {
-            token = keyVal[1];
-        }
-    }
-
-    if (expiry < Date.now() + 60000) {
-        // if expiry within a minute, refresh the token
-        token = (await refreshToken(token)).token;
-    }
+    let token = getAuthorization();
 
     if (!headers) {
         headers = {}

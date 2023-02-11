@@ -5,7 +5,8 @@ const path = require('path');
 const errors = require('./utils/httperror');
 
 const auth = require('./routes/auth');
-const nodeRouter = require('./routes/node');
+const ijamRouter = require('./routes/ijam');
+const nodeRouter = require('./routes/nodes');
 
 const rclient = require('./utils/redis-client');
 
@@ -26,6 +27,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
+
+// unauthorized requests
+app.use("/ijam", ijamRouter);
 
 // authorization
 app.use(auth);
@@ -56,7 +60,7 @@ app.post("/query", async (req, res) => {
     processRedisResponse(res, err, reply);
 });
 
-app.use("/node", nodeRouter);
+app.use("/nodes", nodeRouter);
 
 app.use(function (req, res, next) {
     next(errors.errorObj(404, "Not found."));
