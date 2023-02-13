@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-const crypto = require("crypto");
 
 const rclient = require("./../utils/redis-client");
 const errors = require("./../utils/httperror");
@@ -35,24 +34,14 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
         }
     }
 
-    // generate registration key
-    var regKey = crypto.randomBytes(32).toString("hex");
-
     // create node entry
-    [err, redisRes] = await rclient.setObj(key, {
-        name: nodeReq.name,
-        type: nodeReq.type,
-        mac: "",
-        pubKey: "",
-        regKey: regKey,
-        user_username: req.user.username,
-        createdOn: Date.now(),
-        registeredOn: 0,
-        lastRefreshedOn: 0,
-        status: node.statuses.CREATED
-    });
+    const nodeObj = node.obj.create(nodeReq.name, nodeReq.type, req.user.username);
+    [err, redisRes] = await rclient.setObj(key, nodeObj);
 
-    res.redirect("/ijam/register/" + uuid);
+    // add node entry to user's list
+    [err, redisRes] = await rclient.addToSet(node.userNodesKeyFromReq(req), uuid);
+
+    res.send(nodeObj.regKey);
 }));
 
 module.exports = router;

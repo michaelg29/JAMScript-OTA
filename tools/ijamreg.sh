@@ -13,21 +13,25 @@ Makes an HTTPS request to the OTA system to register a device. You must
 have created a device entry for your user in the OTA portal by visiting
 your dashboard and clicking 'Create node.'
 
+If you do not provide the --nodeid or --regkey options, those values will
+be read from the files "nodeid" and "regkey", respectively.
+
 Use the --insecure option to tell curl to not check the certificates
 when making the request.
 
-Usage: ijamreg --nodeid=node_uuid --regkey=regkey
+Usage: ijamreg [--nodeid=node_uuid] [--regkey=regkey]
                         [--insecure]
 
 EOF
 }
 
 # Initialize variables
-devid=
-regkey=
+nodeid=`[ -r nodeid ] && cat nodeid`
+regkey=`[ -r regkey ] && cat regkey`
 mac=
 pubkey=
-curl_opt=
+#curl_opt="--write-out %{http_code}\n -X POST"
+curl_opt="-X POST"
 
 # Parse parameters
 while :; do
@@ -88,7 +92,18 @@ mac="00:15:5d:56:bb:e8"
 pubkey="pubKey_test"
 
 # Make the web request
-curl ${curl_opt}-X POST https://jamota.cs.mcgill.ca/ijam/register/${nodeid} \
+curl ${curl_opt} https://jamota.cs.mcgill.ca/ijam/register/${nodeid} \
     -H "Accept: text/plain" \
     -H "Content-Type: application/x-www-form-urlencoded" \
-    -d "regKey=${regkey}&mac=${mac}&pubKey=${pubkey}"
+    -d "regKey=${regkey}&mac=${mac}&pubKey=${pubkey}" > regkey
+
+echo "Saving node id..."
+echo ${nodeid} > nodeid
+
+res=`cat regkey`
+if [ "Invalid registration key." = "$res" ]
+then
+    echo "Invalid registration key. Please re-register the node manually."
+else
+    echo "Node registered and new registration key stored."
+fi

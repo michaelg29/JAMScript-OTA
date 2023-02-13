@@ -68,9 +68,13 @@ app.use(function (req, res, next) {
 
 // error handler
 app.use(function (err, req, res, next) {
+    const isDevelopment = req.app.get("env") === "development";
+    if (isDevelopment) {
+        console.log(err);
+    }
     // set locals, only providing error in development
     res.locals.message = err.message;
-    res.locals.error = req.app.get('env') === 'development' ? err : {};
+    res.locals.error = isDevelopment ? err : {};
 
     err.statusCode = err.statusCode || 500;
     res.status(err.statusCode);
@@ -80,10 +84,10 @@ app.use(function (err, req, res, next) {
         res.send({
             statusCode: err.statusCode,
             message: err.message,
-            error: req.app.get("env") === "development" ? err : {}
+            error: isDevelopment ? err : {}
         });
     }
-    else if (returnType === "text/html") {
+    else if (returnType.includes("html")) {
         var route = "error";
         if (err.renderHTML && typeof err.renderHTML === "string") {
             route = err.renderHTML;

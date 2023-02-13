@@ -35,9 +35,29 @@ async function getObj(key) {
     return await execute("hgetall", [key]);
 }
 
+async function addToSet(key, item) {
+    return await execute("sadd", [key, item]);
+}
+
+async function isInSet(key, item) {
+    return await execute("sismember", [key, item]);
+}
+
+async function getSetMembers(key) {
+    return await execute("smembers", [key]);
+}
+
+async function removeFromSet(key, item) {
+    return await execute("srem", [key, item]);
+}
+
 module.exports = {
     createGUID: createGUID,
     execute: execute,
     setObj: setObj,
     getObj: getObj,
+    addToSet: addToSet,
+    isInSet: isInSet,
+    getSetMembers: getSetMembers,
+    removeFromSet: removeFromSet,
 };

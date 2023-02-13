@@ -20,26 +20,30 @@ router.post("/register/:id", errors.asyncWrap(async function(req, res, next) {
         errors.error(404, "Node not found.");
     }
 
+    if (redisRes.status == node.statuses.REVOKED) {
+        errors.error(403, "Node is revoked.");
+    }
+
     // validate registration key
     if (redisRes.regKey !== req.body.regKey) {
-        errors.error(400, "Invalid registration key.", "register");
+        errors.error(403, "Invalid registration key.");
+    }
+    if (node.isExpired(redisRes)) {
+        const expiredNodeObj = node.obj.expire();
+        [err, redisRes] = await rclient.setObj(nodeKey, expiredNodeObj);
+        errors.error(403, "Expired registration key.");
     }
 
     // TODO: test SSH connection
 
     // update node entry in DB
-    [err, redisRes] = await rclient.setObj(nodeKey, {
-        mac: nodeReq.mac,
-        pubKey: nodeReq.pubKey,
-        registeredOn: Date.now(),
-        lastRefreshedOn: Date.now(),
-        status: node.statuses.REGISTERED
-    });
+    const nodeObj = node.obj.refresh(nodeReq.mac, nodeReq.pubKey);
+    [err, redisRes] = await rclient.setObj(nodeKey, nodeObj);
     if (err) {
         errors.error(500, err);
     }
 
-    res.status(200).send("Node registered.\n");
+    res.status(200).send(nodeObj.regKey + "\n");
 }));
 
 module.exports = router;
