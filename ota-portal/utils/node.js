@@ -22,14 +22,14 @@ const isExpired= function(nodeObj) {
     return lastRegisteredOn !== 0 && lastRegisteredOn + registrationExpiry < Date.now();
 }
 
-const newNodeObj = function(name, type, username) {
+const newNodeObj = function(name, type) {
     return {
         name: name,
         type: type,
         mac: "",
         pubKey: "",
         regKey: newRegKey(),
-        user_username: username,
+        createdOn: Date.now(),
         lastRegisteredOn: 0,
         status: statuses.CREATED
     };

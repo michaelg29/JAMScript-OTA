@@ -7,8 +7,44 @@ const request = require("./../utils/request");
 
 const node = require("./../utils/node");
 
+function applyFilter(nodeObj) {
+    return true;
+}
+
+function map(nodeObj) {
+    const createdOn = Number.parseInt(nodeObj.createdOn);
+    const lastRegisteredOn = Number.parseInt(nodeObj.lastRegisteredOn);
+
+    return {
+        name: nodeObj.name,
+        type: nodeObj.type,
+        status: nodeObj.status,
+        createdOn: new Date(createdOn).toDateString(),
+        lastRegisteredOn: lastRegisteredOn === 0
+            ? 'Not registered yet'
+            : new Date(lastRegisteredOn).toDateString(),
+    };
+}
+
+async function filterNodeEntries(username, nodeIds) {
+    let nodes = {};
+
+    for (let nodeId of nodeIds) {
+        [err, nodeObj] = await rclient.getObj(node.nodeKey(nodeId));
+        if (applyFilter(nodeObj)) {
+            nodes[nodeId] = map(nodeObj);
+        }
+    }
+
+    return nodes;
+}
+
 router.get("/", errors.asyncWrap(async function(req, res, next) {
-    res.render("node/list");
+    [err, nodeIds] = await rclient.getSetMembers(node.userNodesKeyFromReq(req));
+
+    res.render("node/list", {
+        data: await filterNodeEntries(req.user.username, nodeIds)
+    });
 }));
 
 router.get("/reserve", function(req, res, next) {
@@ -35,7 +71,7 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
     }
 
     // create node entry
-    const nodeObj = node.obj.create(nodeReq.name, nodeReq.type, req.user.username);
+    const nodeObj = node.obj.create(nodeReq.name, nodeReq.type);
     [err, redisRes] = await rclient.setObj(key, nodeObj);
 
     // add node entry to user's list

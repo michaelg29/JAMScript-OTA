@@ -2,3 +2,61 @@
 .error-msg {
     color: red;
 }
+
+.nodes td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: initial; 
+}
+
+.nodes th {
+    background: darkblue;
+    color: white;
+}
+
+.nodes td,
+.nodes th {
+    text-align: left;
+    padding: 3px 3px;
+}
+
+.nodes tr.status-registered {
+
+}
+
+.nodes tr.status-expired {
+    font-style: italic;
+}
+
+.nodes tr.status-revoked {
+    font-style: oblique;
+}
+
+.nodes td.device {
+    color: green;
+}
+
+.nodes td.fog {
+    color: gray;
+}
+
+.nodes td.cloud {
+    color: lightskyblue;
+}
+
+.nodes td.registered {
+
+}
+
+.nodes td.created {
+
+}
+
+.nodes td.expired {
+    font-weight: bold;
+}
+
+.nodes td.revoked {
+    color: red;
+    font-style: italic;
+}
