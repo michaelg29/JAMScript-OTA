@@ -12,7 +12,7 @@ Make a copy of `.env.example` and rename it to `.env`.
 * `PORTAL_ADMIN_USERNAME`, `PORTAL_ADMIN_EMAIL`, and `PORTAL_ADMIN_PASSWORD` are the credentials and account information for an administrator user on the portal.
 
 ### Optional: generate a certificate if using HTTPS
-Navigate to the `ota-portal/bin` directory in a command prompt and generate a key using OpenSSL. In the options, you can leave everything as default, but you must enter a hostname for the `Common Name`. For example, you can use `localhost` if no custom URL is set, or if you map a different URL like `jamota.jamscript.com` to `localhost` on your machine (i.e. in your hosts file), you should enter that URL.
+Navigate to the `ota-portal/bin` directory in a command prompt and generate a key using OpenSSL. In the options, you can leave everything as default, but you must enter a hostname for the `Common Name`. For example, you can use `localhost` if no custom URL is set, or if you map a different URL like `ota.jamscript.com` to `localhost` on your machine (i.e. in your hosts file), you should enter that URL.
 ```
 openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes
 ```

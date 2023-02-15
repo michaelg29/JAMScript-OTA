@@ -16,6 +16,7 @@ services:
       - ./start.sh:${JAMOTA_ROOT}/start.sh
       - ./ota-portal:${JAMOTA_ROOT}/ota-portal
       - ./redis:${JAMOTA_ROOT}/redis
+      - ./ssh:${JAMOTA_ROOT}/ssh
     ports:
       - ${REDIS_PORT}:${REDIS_PORT}
       - ${PORTAL_PORT}:${PORTAL_PORT}

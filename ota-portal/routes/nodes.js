@@ -4,6 +4,7 @@ const router = express.Router();
 const rclient = require("./../utils/redis-client");
 const errors = require("./../utils/httperror");
 const request = require("./../utils/request");
+const ssh = require("./../utils/ssh");
 
 const node = require("./../utils/node");
 
@@ -31,7 +32,7 @@ async function filterNodeEntries(username, nodeIds) {
 
     for (let nodeId of nodeIds) {
         [err, nodeObj] = await rclient.getObj(node.nodeKey(nodeId));
-        if (applyFilter(nodeObj)) {
+        if (nodeObj && applyFilter(nodeObj)) {
             nodes[nodeId] = map(nodeObj);
         }
     }
@@ -70,6 +71,9 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
         }
     }
 
+    // generate public key
+    const pubKey = await ssh.generateAndSaveKeys(uuid);
+
     // create node entry
     const nodeObj = node.obj.create(nodeReq.name, nodeReq.type);
     [err, redisRes] = await rclient.setObj(key, nodeObj);
@@ -77,7 +81,11 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
     // add node entry to user's list
     [err, redisRes] = await rclient.addToSet(node.userNodesKeyFromReq(req), uuid);
 
-    res.send(nodeObj.regKey);
+    res.render("node/register", {
+        id: uuid,
+        pubKey: pubKey,
+        regKey: nodeObj.regKey
+    });
 }));
 
 module.exports = router;

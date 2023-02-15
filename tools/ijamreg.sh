@@ -8,18 +8,20 @@ show_usage() {
     cat << EOF
 Registers the current device with the JAMScript Over-the-Air system.
 
-ijamreg --nodeid=node_uuid --regkey=regkey
+ijamreg --pubkey=pubkey --nodeid=node_uuid --regkey=regkey
 Makes an HTTPS request to the OTA system to register a device. You must
 have created a device entry for your user in the OTA portal by visiting
-your dashboard and clicking 'Create node.'
+your dashboard and clicking 'Create node.' The OTA portal will provide
+you with the SSH public key, the node ID, and the registration key for
+this command.
 
 If you do not provide the --nodeid or --regkey options, those values will
 be read from the files "nodeid" and "regkey", respectively.
 
-Use the --insecure option to tell curl to not check the certificates
-when making the request.
+Use the --insecure option to tell curl to not check the HTTPS
+certificates when making the request.
 
-Usage: ijamreg [--nodeid=node_uuid] [--regkey=regkey]
+Usage: ijamreg --pubkey=pubkey [--nodeid=node_uuid] [--regkey=regkey]
                         [--insecure]
 
 EOF
@@ -28,10 +30,11 @@ EOF
 # Initialize variables
 nodeid=`[ -r nodeid ] && cat nodeid`
 regkey=`[ -r regkey ] && cat regkey`
-mac=
 pubkey=
+ip=`hostname -I`
 #curl_opt="--write-out %{http_code}\n -X POST"
 curl_opt="-X POST"
+url=https://ota.jamscript.com
 
 # Parse parameters
 while :; do
@@ -54,6 +57,20 @@ while :; do
         --nodeid=)            # Handle the case of an empty
             die 'ERROR: "--nodeid" requires a non-empty option argument.'
             ;;
+        --pubkey)           # Takes an option argument; ensure it has been specified.
+            if [ "$2" ]; then
+                pubkey=$2
+                shift
+            else
+                die 'ERROR: "--pubkey" requires a non-empty option argument.'
+            fi
+            ;;
+        --pubkey=?*)
+            pubkey=${1#*=}     # Delete everything up to "=" and assign the remainder.
+            ;;
+        --pubkey=)            # Handle the case of an empty
+            die 'ERROR: "--pubkey" requires a non-empty option argument.'
+            ;;
         --regkey)           # Takes an option argument; ensure it has been specified.
             if [ "$2" ]; then
                 regkey=$2
@@ -68,13 +85,27 @@ while :; do
         --regkey=)            # Handle the case of an empty
             die 'ERROR: "--regkey" requires a non-empty option argument.'
             ;;
+        --url)           # Takes an option argument; ensure it has been specified.
+            if [ "$2" ]; then
+                url=$2
+                shift
+            else
+                die 'ERROR: "--url" requires a non-empty option argument.'
+            fi
+            ;;
+        --url=?*)
+            url=${1#*=}     # Delete everything up to "=" and assign the remainder.
+            ;;
+        --url=)            # Handle the case of an empty
+            die 'ERROR: "--url" requires a non-empty option argument.'
+            ;;
         --insecure)           # Takes an option argument; ensure it has been specified.
             curl_opt="-k ${curl_opt}"
             ;;
         --)              # End of all options.
             shift
             break
-        ;;
+            ;;
         -?*)
             printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
             ;;
@@ -85,17 +116,19 @@ while :; do
     shift
 done
 
-# Get MAC address
-mac="00:15:5d:56:bb:e8"
+if [ -z pubkey ]
+then
+    die 'ERROR: Did not receive a public key.'
+fi
 
-# Generate SSH keys
-pubkey="pubKey_test"
+# Save the public key
+echo ${pubkey} >> ~/.ssh/authorized_keys
 
 # Make the web request
-curl ${curl_opt} https://jamota.cs.mcgill.ca/ijam/register/${nodeid} \
+curl ${curl_opt} ${url}/ijam/register/${nodeid} \
     -H "Accept: text/plain" \
     -H "Content-Type: application/x-www-form-urlencoded" \
-    -d "regKey=${regkey}&mac=${mac}&pubKey=${pubkey}" > regkey
+    -d "regKey=${regkey}&sshUser=${USER}&ip=${ip}" > regkey
 
 echo "Saving node id..."
 echo ${nodeid} > nodeid

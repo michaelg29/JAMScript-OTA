@@ -26,22 +26,20 @@ const newNodeObj = function(name, type) {
     return {
         name: name,
         type: type,
-        mac: "",
-        pubKey: "",
         regKey: newRegKey(),
+        sshUser: "",
         createdOn: Date.now(),
         lastRegisteredOn: 0,
         status: statuses.CREATED
     };
 }
 
-const refreshedNodeObj = function(mac, pubKey) {
+const refreshedNodeObj = function(sshUser) {
     return {
-        mac: mac,
-        pubKey: pubKey,
         lastRegisteredOn: Date.now(),
         status: statuses.REGISTERED,
-        regKey: newRegKey()
+        regKey: newRegKey(),
+        sshUser: sshUser
     };
 }
 
@@ -55,7 +53,6 @@ const expiredNodeObj = function() {
 const revokedNodeObj = function() {
     return {
         status: statuses.REVOKED,
-        pubKey: "",
         regKey: ""
     }
 }

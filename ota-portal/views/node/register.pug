@@ -1,0 +1,6 @@
+extends ../layout
+
+block content
+    h1 Registering your new node
+    
+    p ./ijamreg.sh --insecure --nodeid "#{id}" --pubkey "#{pubKey}" --regkey "#{regKey}"

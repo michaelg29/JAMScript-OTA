@@ -4,11 +4,12 @@ const router = express.Router();
 const rclient = require("./../utils/redis-client");
 const errors = require("./../utils/httperror");
 const request = require("./../utils/request");
+const ssh = require("./../utils/ssh");
 
 const node = require("./../utils/node");
 
 router.post("/register/:id", errors.asyncWrap(async function(req, res, next) {
-    const nodeReq = request.validateBody(req, ["regKey", "mac", "pubKey"]);
+    const nodeReq = request.validateBody(req, ["regKey", "sshUser", "ip"]);
     
     // get requested node
     const nodeId = req.params.id;
@@ -34,10 +35,13 @@ router.post("/register/:id", errors.asyncWrap(async function(req, res, next) {
         errors.error(403, "Expired registration key.");
     }
 
-    // TODO: test SSH connection
+    // test SSH connection
+    if (!(await ssh.testSSH(nodeId, req.body.sshUser, req.body.ip))) {
+        errors.error(403, "Invalid SSH connection.");
+    }
 
     // update node entry in DB
-    const nodeObj = node.obj.refresh(nodeReq.mac, nodeReq.pubKey);
+    const nodeObj = node.obj.refresh(req.body.sshUser);
     [err, redisRes] = await rclient.setObj(nodeKey, nodeObj);
     if (err) {
         errors.error(500, err);
