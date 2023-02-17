@@ -10,6 +10,11 @@ const node = require("./../utils/node");
 
 router.post("/register/:id", errors.asyncWrap(async function(req, res, next) {
     const nodeReq = request.validateBody(req, ["regKey", "sshUser", "ip"]);
+
+    // validate registration key before accessing database
+    if (!node.validateRegKey(nodeReq.regKey)) {
+        errors.error(403, "Invalid registration key.");
+    }
     
     // get requested node
     const nodeId = req.params.id;
@@ -26,7 +31,7 @@ router.post("/register/:id", errors.asyncWrap(async function(req, res, next) {
     }
 
     // validate registration key
-    if (redisRes.regKey !== req.body.regKey) {
+    if (redisRes.regKey !== nodeReq.regKey) {
         errors.error(403, "Invalid registration key.");
     }
     if (node.isExpired(redisRes)) {
@@ -36,12 +41,12 @@ router.post("/register/:id", errors.asyncWrap(async function(req, res, next) {
     }
 
     // test SSH connection
-    if (!(await ssh.testSSH(nodeId, req.body.sshUser, req.body.ip))) {
+    if (!(await ssh.testSSH(nodeId, nodeReq.sshUser, nodeReq.ip))) {
         errors.error(403, "Invalid SSH connection.");
     }
 
     // update node entry in DB
-    const nodeObj = node.obj.refresh(req.body.sshUser);
+    const nodeObj = node.obj.refresh(nodeReq.sshUser);
     [err, redisRes] = await rclient.setObj(nodeKey, nodeObj);
     if (err) {
         errors.error(500, err);

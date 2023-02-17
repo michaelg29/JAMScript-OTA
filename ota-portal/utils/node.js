@@ -14,10 +14,49 @@ const statuses = {
 };
 
 const registrationExpiry = 1000 * 60 * 60 * 24 * 90;
+const regKeyLen = 32;
+const minRegKeySum = 14;
+const maxRegKeySum = 100;
 
-const newRegKey = () => crypto.randomBytes(32).toString("hex");
+const newRegKey = function() {
+    var bytes = new Uint8Array(regKeyLen);
 
-const isExpired= function(nodeObj) {
+    let sum = 0;
+    for (let i = 0; i < regKeyLen; ++i) {
+        // compute next byte
+        const curMod = sum % 256;
+        let minRange = Math.max(((minRegKeySum - curMod + 256) % 256) - (regKeyLen - i - 1), 0);
+        let maxRange = Math.min(((maxRegKeySum - curMod + 256) % 256) + (regKeyLen - i - 1), 255);
+        if (minRange > maxRange) {
+            maxRange = 255;
+        }
+        const val = Math.floor(Math.random() * (maxRange - minRange) + minRange);
+
+        // store in key
+        bytes[i] = val;
+        sum += val;
+    }
+
+    return Buffer.from(bytes).toString("hex");
+}
+
+const validateRegKey = function(regKey) {
+    // get byte array
+    var bytes = Buffer.from(regKey, "hex");
+
+    let sum = 0;
+    for (const [idx, val] of bytes.entries()) {
+        if (idx >= regKeyLen) {
+            break;
+        }
+        sum += val;
+    }
+
+    sum = sum % 256;
+    return sum >= minRegKeySum && sum <= maxRegKeySum;
+}
+
+const isExpired = function(nodeObj) {
     const lastRegisteredOn = Number.parseInt(nodeObj.lastRegisteredOn);
     return lastRegisteredOn !== 0 && lastRegisteredOn + registrationExpiry < Date.now();
 }
@@ -64,6 +103,7 @@ module.exports = {
     validType: (type) => Object.values(types).includes(type),
     statuses: statuses,
     newRegKey: newRegKey,
+    validateRegKey: validateRegKey,
     registrationExpiry: registrationExpiry,
     isExpired: isExpired,
     obj: {
