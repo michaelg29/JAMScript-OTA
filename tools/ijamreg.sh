@@ -1,8 +1,9 @@
 #!/bin/bash
 
-IDIR="${BASH_SOURCE%/*}"
-if [[ ! -d "$IDIR" ]]; then IDIR="$PWD"; fi
-source "$IDIR/inc/misc_tools.sh"
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
 
 show_usage() {
     cat << EOF
@@ -130,13 +131,15 @@ curl ${curl_opt} ${url}/ijam/register/${nodeid} \
     -H "Content-Type: application/x-www-form-urlencoded" \
     -d "regKey=${regkey}&sshUser=${USER}&ip=${ip}" > regkey
 
-echo "Saving node id..."
-echo ${nodeid} > nodeid
-
 res=`cat regkey`
 if [ "Invalid registration key." = "$res" ]
 then
-    echo "Invalid registration key. Please re-register the node manually."
+    die "Invalid registration key. Please re-register the node manually."
+elif [ "Invalid SSH connection." = "$res" ]
+then
+    die "Server could not SSH into your device."
 else
+    echo "Saving node id..."
+    echo ${nodeid} > nodeid
     echo "Node registered and new registration key stored."
 fi

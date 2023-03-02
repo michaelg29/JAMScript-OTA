@@ -9,7 +9,15 @@ const ssh = require("./../utils/ssh");
 const node = require("./../utils/node");
 
 router.post("/register/:id", errors.asyncWrap(async function(req, res, next) {
-    const nodeReq = request.validateBody(req, ["regKey", "sshUser", "ip"]);
+    let clientIp = request.getIp(req);
+    let nodeReq;
+    if (!!process.env.SSH_IP_IN_FORM) {
+        nodeReq = request.validateBody(req, ["regKey", "sshUser", "ip"]);
+        clientIp = nodeReq.ip;
+    }
+    else {
+        nodeReq = request.validateBody(req, ["regKey", "sshUser"]);
+    }
 
     // validate registration key before accessing database
     if (!node.validateRegKey(nodeReq.regKey)) {
@@ -41,7 +49,7 @@ router.post("/register/:id", errors.asyncWrap(async function(req, res, next) {
     }
 
     // test SSH connection
-    if (!(await ssh.testSSH(nodeId, nodeReq.sshUser, nodeReq.ip))) {
+    if (!(await ssh.testSSH(nodeId, nodeReq.sshUser, clientIp))) {
         errors.error(403, "Invalid SSH connection.");
     }
 

@@ -1,3 +1,12 @@
+## TODO
+* server detect requesting IP on register/online for SSH
+* ijam tools download for nodes (jamrun)
+    * automate on register call
+    * store version on node, request a new one if updated
+    * determine what files are needed
+* network model to allow multiple networks for a user
+* node program loading
+
 ## Setting up
 ### Create `.env` file
 Make a copy of `.env.example` and rename it to `.env`.
