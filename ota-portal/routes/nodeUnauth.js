@@ -1,3 +1,9 @@
+/**
+ * Unauthorized requests to transition nodes in the database. These
+ * requests come from the node itself, hence does not have an active
+ * OAuth session or access token.
+ */
+
 const express = require("express");
 const router = express.Router();
 
@@ -8,16 +14,9 @@ const ssh = require("./../utils/ssh");
 
 const node = require("./../utils/node");
 
-router.post("/register/:id", errors.asyncWrap(async function(req, res, next) {
-    let clientIp = request.getIp(req);
-    let nodeReq;
-    if (!!process.env.SSH_IP_IN_FORM) {
-        nodeReq = request.validateBody(req, ["regKey", "sshUser", "ip"]);
-        clientIp = nodeReq.ip;
-    }
-    else {
-        nodeReq = request.validateBody(req, ["regKey", "sshUser"]);
-    }
+router.put("/:id/register", errors.asyncWrap(async function(req, res, next) {
+    const clientIp = request.getIp(req);
+    const nodeReq = request.validateBody(req, ["regKey", "sshUser"]);
 
     // validate registration key before accessing database
     if (!node.validateRegKey(nodeReq.regKey)) {
@@ -26,17 +25,10 @@ router.post("/register/:id", errors.asyncWrap(async function(req, res, next) {
     
     // get requested node
     const nodeId = req.params.id;
-    const nodeKey = node.nodeKey(nodeId);
+    [redisRes, nodeKey] = await node.getNode(nodeId);
 
-    // get existing node entry
-    [err, redisRes] = await rclient.getObj(nodeKey);
-    if (err || !redisRes) {
-        errors.error(404, "Node not found.");
-    }
-
-    if (redisRes.status == node.statuses.REVOKED) {
-        errors.error(403, "Node is revoked.");
-    }
+    // cannot register/refresh if revoked
+    node.invalidateNodeTransition(redisRes, node.statuses.ONLINE, node.statuses,REVOKED);
 
     // validate registration key
     if (redisRes.regKey !== nodeReq.regKey) {
@@ -61,6 +53,28 @@ router.post("/register/:id", errors.asyncWrap(async function(req, res, next) {
     }
 
     res.status(200).send(nodeObj.regKey + "\n");
+}));
+
+router.put("/:id/online", errors.asyncWrap(async function(req, res, next) {
+
+}));
+
+router.put("/:id/offline", errors.asyncWrap(async function(req, res, next) {
+    // get requested node
+    const nodeId = req.params.id;
+    [redisRes, nodeKey] = await node.getNode(nodeId);
+
+    // can put offline only if online
+    node.validateNodeTransition(redisRes, node.statuses.OFFLINE, node.statuses.ONLINE);
+
+    // update node entry in DB
+    const nodeObj = node.obj.revoke(nodeReq.sshUser);
+    [err, redisRes] = await rclient.setObj(nodeKey, nodeObj);
+    if (err) {
+        errors.error(500, err);
+    }
+
+    res.status(200).send();
 }));
 
 module.exports = router;

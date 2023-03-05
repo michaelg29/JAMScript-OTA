@@ -126,7 +126,7 @@ fi
 echo ${pubkey} >> ~/.ssh/authorized_keys
 
 # Make the web request
-curl ${curl_opt} ${url}/ijam/register/${nodeid} \
+curl ${curl_opt} ${url}/nodes/${nodeid}/register \
     -H "Accept: text/plain" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     -d "regKey=${regkey}&sshUser=${USER}&ip=${ip}" > regkey

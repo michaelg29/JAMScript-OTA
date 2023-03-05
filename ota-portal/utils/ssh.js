@@ -1,4 +1,3 @@
-const fs = require("fs");
 const { spawn } = require("child_process");
 const crypto = require("crypto");
 
@@ -26,7 +25,7 @@ async function execScript(path, args, onstdout, onstderr) {
 async function generateAndSaveKeys(nodeid) {
     const execPath = "./../../ssh/keygen.sh";
     let key = "";
-    const code = await execScript(execPath, [nodeid], (data) => {
+    await execScript(execPath, [nodeid], (data) => {
         key += data.toString();
     });
     return key;
@@ -36,7 +35,7 @@ async function generateAndSaveKeys(nodeid) {
 async function getPubKey(nodeid) {
     const execPath = "./../../ssh/keyget.sh";
     let key = "";
-    const code = await execScript(execPath, [nodeid], (data) => {
+    await execScript(execPath, [nodeid], (data) => {
         key += data.toString();
     });
     return key;
@@ -46,7 +45,7 @@ async function getPubKey(nodeid) {
 async function deleteKey(nodeid) {
     const execPath = "./../../ssh/keyrem.sh";
     let key = "";
-    const code = await execScript(execPath, [nodeid], (data) => {
+    await execScript(execPath, [nodeid], (data) => {
         key += data.toString();
     });
     return key;

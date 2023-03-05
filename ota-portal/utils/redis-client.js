@@ -2,7 +2,9 @@ const redis = require('redis');
 const rclient = redis.createClient({
     host: process.env.REDIS_HOST,
     port: process.env.REDIS_PORT,
-    password: process.env.REDIS_MASTERPWD
+    password: process.env.REDIS_MASTERPWD,
+    no_ready_check: true,
+    auth_pass: process.env.REDIS_MASTERPWD,
 });
 
 var createGUID = function() {

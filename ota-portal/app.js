@@ -1,14 +1,13 @@
-const express = require('express');
-const cookieParser = require('cookie-parser');
-const logger = require('morgan');
-const path = require('path');
-const errors = require('./utils/httperror');
+const express = require("express");
+const cookieParser = require("cookie-parser");
+const logger = require("morgan");
+const path = require("path");
+const errors = require("./utils/httperror");
 
-const auth = require('./routes/auth');
-const ijamRouter = require('./routes/ijam');
-const nodeRouter = require('./routes/nodes');
-
-const rclient = require('./utils/redis-client');
+const auth = require("./routes/auth");
+const nodesRouter = require("./routes/nodes");
+const nodeAuthRouter = require("./routes/nodeAuth");
+const nodeUnauthRouter = require("./routes/nodeUnauth");
 
 var app = express();
 
@@ -29,7 +28,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
 
 // unauthorized requests
-app.use("/ijam", ijamRouter);
+app.use("/nodes", nodeUnauthRouter);
 
 // authorization
 app.use(auth);
@@ -41,26 +40,8 @@ app.get("/", (req, res) => {
     });
 });
 
-function processRedisResponse(httpRes, err, redisReply) {
-    if (err) {
-        httpRes.status(400).send(err);
-        return;
-    }
-    console.log(redisReply);
-
-    httpRes.type('text');
-    httpRes.send(typeof redisReply === 'number' ? 'OK' : redisReply);
-}
-
-app.post("/query", async (req, res) => {
-    let query = req.body.split(' ');
-    let queryArgs = query.slice(1);
-
-    [err, reply] = await rclient.execute(query[0], queryArgs);
-    processRedisResponse(res, err, reply);
-});
-
-app.use("/nodes", nodeRouter);
+app.use("/nodes", nodesRouter);
+app.use("/nodes", nodeAuthRouter);
 
 app.use(function (req, res, next) {
     next(errors.errorObj(404, "Not found."));
