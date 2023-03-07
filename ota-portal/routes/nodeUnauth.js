@@ -13,6 +13,7 @@ const request = require("./../utils/request");
 const ssh = require("./../utils/ssh");
 
 const node = require("./../utils/node");
+const jamscript = require("./../utils/jamscript");
 
 router.put("/:id/register", errors.asyncWrap(async function(req, res, next) {
     const clientIp = request.getIp(req);
@@ -46,17 +47,37 @@ router.put("/:id/register", errors.asyncWrap(async function(req, res, next) {
     }
 
     // update node entry in DB
-    const nodeObj = node.obj.refresh(nodeReq.sshUser);
-    [err, redisRes] = await rclient.setObj(nodeKey, nodeObj);
-    if (err) {
-        errors.error(500, err);
-    }
+    await node.obj.refresh(nodeId, nodeReq.sshUser);
 
     res.status(200).send(nodeObj.regKey + "\n");
 }));
 
 router.put("/:id/online", errors.asyncWrap(async function(req, res, next) {
+    const clientIp = request.getIp(req);
+    const nodeReq = request.validateBody(req, ["regKey", "sshUser", "curVer"]);
+    const sshUser = nodeReq.sshUser;
 
+    // get requested node
+    const nodeId = req.params.id;
+    [redisRes, nodeKey] = await node.getNode(nodeId);
+
+    // can put online only if offline
+    node.validateNodeTransition(redisRes, node.statuses.ONLINE, node.statuses.OFFLINE);
+
+    // validate the requesting device
+    if (!(await ssh.testSSH(nodeId, nodeReq.sshUser, clientIp))) {
+        errors.error(403, "Invalid SSH connection.");
+    }
+
+    // update JAMScript on the client
+    if (jamscript.needsUpdate(nodeReq.curVer)) {
+
+    }
+
+    // update node entry in DB
+    await node.obj.online(nodeId, sshUser, clientIp);
+
+    res.status(200).send();
 }));
 
 router.put("/:id/offline", errors.asyncWrap(async function(req, res, next) {
@@ -68,11 +89,7 @@ router.put("/:id/offline", errors.asyncWrap(async function(req, res, next) {
     node.validateNodeTransition(redisRes, node.statuses.OFFLINE, node.statuses.ONLINE);
 
     // update node entry in DB
-    const nodeObj = node.obj.revoke(nodeReq.sshUser);
-    [err, redisRes] = await rclient.setObj(nodeKey, nodeObj);
-    if (err) {
-        errors.error(500, err);
-    }
+    await node.obj.revoke(nodeId);
 
     res.status(200).send();
 }));

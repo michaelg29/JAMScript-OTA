@@ -65,8 +65,15 @@ const isExpired = function(nodeObj) {
     return lastRegisteredOn !== 0 && lastRegisteredOn + registrationExpiry < Date.now();
 };
 
-const newNodeObj = function(name, type) {
-    return {
+/**
+ * Create a new node object and store in the database.
+ * @param {string} id Guid of the node.
+ * @param {string} name Name.
+ * @param {string} type Type of the node, selected from `types`.
+ * @returns The created node object.
+ */
+const newNodeObj = async function(id, name, type) {
+    const nodeObj = {
         status: statuses.CREATED,
         name: name,
         type: type,
@@ -77,38 +84,90 @@ const newNodeObj = function(name, type) {
         lastRegisteredOn: 0,
         lastOnlineOn: 0,
     };
+
+    [err, redisRes] = await rclient.setObj(nodeKey(id), nodeObj);
+    if (err) {
+        errors.error(500, err);
+    }
+
+    return nodeObj;
 };
 
-const refreshedNodeObj = function(sshUser) {
-    return {
+/**
+ * Update the node object to be offline with a new registration key.
+ * @param {string} id Guid of the node.
+ * @param {string} sshUser User to SSH into the node with.
+ * @returns The node object with the updated fields.
+ */
+const refreshedNodeObj = async function(id, sshUser) {
+    const nodeObj = {
         status: statuses.OFFLINE,
         lastRegisteredOn: Date.now(),
         regKey: newRegKey(),
         sshUser: sshUser,
     };
+
+    [err, redisRes] = await rclient.setObj(nodeKey(id), nodeObj);
+    if (err) {
+        errors.error(500, err);
+    }
+
+    return nodeObj;
 };
 
-const expiredNodeObj = function() {
-    return {
+/**
+ * Update the node object to be expired.
+ * @param {string} id Guid of the node.
+ * @returns The node object with the updated fields.
+ */
+const expiredNodeObj = async function(id) {
+    const nodeObj = {
         status: statuses.EXPIRED,
         regKey: "",
     };
+
+    [err, redisRes] = await rclient.setObj(nodeKey(id), nodeObj);
+    if (err) {
+        errors.error(500, err);
+    }
 };
 
-const revokedNodeObj = function() {
-    return {
+/**
+ * Update the node object to be revoked and clear the registration key.
+ * @param {string} id Guid of the node.
+ * @returns The node object with the updated fields.
+ */
+const revokedNodeObj = async function(id) {
+    const nodeObj = {
         status: statuses.REVOKED,
         regKey: "",
     };
+
+    [err, redisRes] = await rclient.setObj(nodeKey(id), nodeObj);
+    if (err) {
+        errors.error(500, err);
+    }
 };
 
-const onlineNodeObj = function(sshUser, ip) {
-    return {
+/**
+ * Update the node object to be online.
+ * @param {string} id Guid of the node.
+ * @param {string} sshUser User to SSH into the node with.
+ * @param {string} ip The active IP address of the node.
+ * @returns The node object with the updated fields.
+ */
+const onlineNodeObj = async function(id, sshUser, ip) {
+    const nodeObj = {
         status: statuses.ONLINE,
         sshUser: sshUser,
         ip: ip,
         lastOnlineOn: Date.now(),
     };
+
+    [err, redisRes] = await rclient.setObj(nodeKey(id), nodeObj);
+    if (err) {
+        errors.error(500, err);
+    }
 };
 
 /**

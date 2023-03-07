@@ -9,7 +9,6 @@ die() {
 nodeid=
 sshUser=
 ip=
-data="hello"
 
 # Parse parameters
 while :; do
@@ -38,14 +37,6 @@ while :; do
                 die 'ERROR: "--ip" requires a non-empty option argument.'
             fi
             ;;
-        --data)           # Takes an option argument; ensure it has been specified.
-            if [ "$2" ]; then
-                data=$2
-                shift
-            else
-                die 'ERROR: "--data" requires a non-empty option argument.'
-            fi
-            ;;
         --)              # End of all options.
             shift
             break
@@ -57,15 +48,5 @@ while :; do
     shift
 done
 
-ssh_id="~/.ssh/id_rsa_${nodeid}"
-
-# Copy SSH tool scripts
-(scp -i ${ssh_id} -rp ijam ${sshUser}@${ip}:~/ > /dev/null 2>&1)
-
-if [ 0 -eq $? ]
-then
-    # Try to create file with data and read data
-    ssh ${sshUser}@${ip} -i ${ssh_id} "echo ${data} > ./ota-test && cat ./ota-test && rm -rf ./ota-test && ./ijam/blink.sh 5"
-else
-    die "Could not copy tool scripts"
-fi
+# Run blink script on device
+ssh ${sshUser}@${ip} -i ~/.ssh/id_rsa_${nodeid} "./ijam/blink.sh"

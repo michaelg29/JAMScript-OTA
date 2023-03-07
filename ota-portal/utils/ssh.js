@@ -64,9 +64,23 @@ async function testSSH(nodeid, sshUser, ip) {
     return out.trim() === data;
 }
 
+async function pingSSH(nodeid, sshUser, ip) {
+    const execPath = "./../../ssh/sshping.sh";
+    let out = "";
+
+    await execScript(execPath, ["--nodeid", nodeid, "--sshUser", sshUser, "--ip", ip], (data) => {
+        out += data.toString();
+    }, (data) => {
+        console.log('err', data.toString());
+    });
+
+    return out;
+}
+
 module.exports = {
     generateAndSaveKeys: generateAndSaveKeys,
     getPubKey: getPubKey,
     deleteKey: deleteKey,
-    testSSH: testSSH
+    testSSH: testSSH,
+    pingSSH: pingSSH,
 }

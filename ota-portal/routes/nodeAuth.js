@@ -32,8 +32,7 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
     const pubKey = await ssh.generateAndSaveKeys(uuid);
 
     // create node entry
-    const nodeObj = node.obj.create(nodeReq.name, nodeReq.type);
-    [err, redisRes] = await rclient.setObj(key, nodeObj);
+    const nodeObj = await node.obj.create(uuid, nodeReq.name, nodeReq.type);
 
     // add node entry to user's list
     [err, redisRes] = await rclient.addToSet(node.userNodesKeyFromReq(req), uuid);
@@ -53,10 +52,19 @@ router.put("/:id/revoke", errors.asyncWrap(async function(req, res, next) {
     }
 
     // update node entry in DB
-    const nodeObj = node.obj.revoke(nodeReq.sshUser);
-    [err, redisRes] = await rclient.setObj(nodeKey, nodeObj);
-    if (err) {
-        errors.error(500, err);
+    await node.obj.revoke(nodeId);
+
+    res.status(200).send();
+}));
+
+router.put("/:id/ping", errors.asyncWrap(async function(req, res, next) {
+    // get requested node
+    const nodeId = req.params.id;
+    [redisRes, nodeKey] = await node.getNode(nodeId);
+
+    // can ping only if online
+    if (redisRes.status !== node.statuses.ONLINE) {
+        errors.error(403, "Node not online.");
     }
 
     res.status(200).send();
