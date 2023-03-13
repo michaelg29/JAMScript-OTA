@@ -45,12 +45,20 @@ async function filterNodeEntries(username, nodeIds) {
 router.get("/", errors.asyncWrap(async function(req, res, next) {
     [err, nodeIds] = await rclient.getSetMembers(node.userNodesKeyFromReq(req));
 
-    res.render("node/list", {
-        data: await filterNodeEntries(req.user.username, nodeIds)
-    });
+    var data = await filterNodeEntries(req.user.username, nodeIds);
+
+    if (req.headers.accept === "application/json") {
+        res.send(data)
+    }
+    else {
+        res.render("node/list", {
+            data: data
+        });
+    }
 }));
 
 router.get("/reserve", function(req, res, next) {
+
     res.render("node/reserve");
 });
 

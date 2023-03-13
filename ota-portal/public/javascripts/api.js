@@ -75,6 +75,8 @@ async function dataRequest(method, endpoint, headers, body, contentType = "appli
         body = JSON.stringify(body);
     }
 
+    headers["Accept"] = "application/json";
+
     return await sendRequest(method, endpoint, headers, body, responseType);
 }
 

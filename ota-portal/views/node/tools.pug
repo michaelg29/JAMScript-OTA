@@ -1,0 +1,17 @@
+extends ../layout
+
+block content
+
+  h2 Download tools to put your node online
+
+  p
+    | Download tools 
+    a(href="/nodes/" + nodeId + "/tools" download) here
+    | .
+
+  p
+    | Return to your 
+    a(href="/nodes") nodes
+
+  script(src="/javascripts/api.js")
+  script(src="/javascripts/nodes/tools.js")

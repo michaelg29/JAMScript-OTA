@@ -8,21 +8,12 @@ block content
       tr
         h1 Hi #{name}, Welcome to the Over-The-Air Update Console for JAMScript
 
-        p
-          | query:
-          input(type="text", id="query")
-        input(type="button", value="submit", id="submit")
-
-        p
-          | route:
-          input(type="text", id="route")
-        input(type="button", value="Request", id="routeRequest")
-
-        p(id="output")
-
       tr 
         h2 List all machines
-        p To see all machines, click <a href="http://localhost:3000/list">http://localhost:3000/list</a>
+        p 
+          | To see all machines, click 
+          a(href="/nodes") here
+          | .
 
   script(src="/javascripts/api.js")
   script(src="/javascripts/query.js")

@@ -209,7 +209,6 @@ const userNodesKeyFromReq = (req) => "user:" + req.user.username + ":nodes";
 const belongsToOwner = async function(req, nodeId) {
     const userNodesKey = userNodesKeyFromReq(req);
     [err, redisRes] = await rclient.isInSet(userNodesKey, nodeId);
-    console.log('exec', err, redisRes);
     if (err || redisRes === 0) {
         errors.error(404, "Node not found.");
     }

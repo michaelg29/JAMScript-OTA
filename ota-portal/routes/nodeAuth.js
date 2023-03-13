@@ -41,11 +41,18 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
     // add node entry to user's list
     [err, redisRes] = await rclient.addToSet(node.userNodesKeyFromReq(req), uuid);
 
-    res.render("node/register", {
-        id: uuid,
+    res.render("node/tools", {
+        nodeId: uuid,
         pubKey: pubKey,
         regKey: nodeObj.regKey
     });
+}));
+
+/**
+ * Download registration tools.
+ */
+router.get("/:id/tools", errors.asyncWrap(async function(req, res, next) {
+
 }));
 
 /**
