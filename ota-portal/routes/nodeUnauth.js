@@ -29,7 +29,7 @@ router.put("/:id/register", errors.asyncWrap(async function(req, res, next) {
     [redisRes, nodeKey] = await node.getNode(nodeId);
 
     // cannot register/refresh if revoked
-    node.invalidateNodeTransition(redisRes, node.statuses.ONLINE, node.statuses,REVOKED);
+    node.invalidateNodeTransition(redisRes, node.statuses.ONLINE, [node.statuses.REVOKED]);
 
     // validate registration key
     if (redisRes.regKey !== nodeReq.regKey) {
@@ -62,7 +62,7 @@ router.put("/:id/online", errors.asyncWrap(async function(req, res, next) {
     [redisRes, nodeKey] = await node.getNode(nodeId);
 
     // can put online only if offline
-    node.validateNodeTransition(redisRes, node.statuses.ONLINE, node.statuses.OFFLINE);
+    node.validateNodeTransition(redisRes, node.statuses.ONLINE, [node.statuses.OFFLINE]);
 
     // validate the requesting device
     if (!(await ssh.testSSH(nodeId, nodeReq.sshUser, clientIp))) {
@@ -86,7 +86,7 @@ router.put("/:id/offline", errors.asyncWrap(async function(req, res, next) {
     [redisRes, nodeKey] = await node.getNode(nodeId);
 
     // can put offline only if online
-    node.validateNodeTransition(redisRes, node.statuses.OFFLINE, node.statuses.ONLINE);
+    node.validateNodeTransition(redisRes, node.statuses.OFFLINE, [node.statuses.ONLINE]);
 
     // update node entry in DB
     await node.obj.revoke(nodeId);

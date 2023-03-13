@@ -13,7 +13,11 @@ const request = require("./../utils/request");
 const ssh = require("./../utils/ssh");
 
 const node = require("./../utils/node");
+const redisClient = require("./../utils/redis-client");
 
+/**
+ * Create a node.
+ */
 router.post("/", errors.asyncWrap(async function(req, res, next) {
     const nodeReq = request.validateBody(req, ["name", "type"]);
     if (!node.validType(nodeReq.type)) {
@@ -44,12 +48,13 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
     });
 }));
 
-router.put("/:id/revoke", errors.asyncWrap(async function(req, res, next) {
+/**
+ * Revoke a node.
+ */
+router.purge("/:id", errors.asyncWrap(async function(req, res, next) {
     // get requested node
     const nodeId = req.params.id;
-    if (!node.nodeExists(nodeId)) {
-        errors.error(404, "Node not found.");
-    }
+    node.belongsToOwner(req, nodeId);
 
     // update node entry in DB
     await node.obj.revoke(nodeId);
@@ -57,17 +62,35 @@ router.put("/:id/revoke", errors.asyncWrap(async function(req, res, next) {
     res.status(200).send();
 }));
 
-router.put("/:id/ping", errors.asyncWrap(async function(req, res, next) {
+/**
+ * Hard delete a node from the database.
+ */
+router.delete("/:id", errors.asyncWrap(async function(req, res, next) {
     // get requested node
     const nodeId = req.params.id;
-    [redisRes, nodeKey] = await node.getNodeFromOwner(nodeId);
+    [redisRes, nodeKey] = await node.getNodeFromOwner(req, nodeId);
+
+    // can only delete if revoked or expired
+    node.validateNodeTransition(redisRes, "deleted", [node.statuses.REVOKED, node.statuses.EXPIRED]);
+    await redisClient.del(nodeKey);
+
+    res.sendStatus(204);
+}));
+
+/**
+ * Ping a node.
+ */
+router.notify("/:id", errors.asyncWrap(async function(req, res, next) {
+    // get requested node
+    const nodeId = req.params.id;
+    [redisRes, nodeKey] = await node.getNodeFromOwner(req, nodeId);
 
     // can ping only if online
     if (redisRes.status !== node.statuses.ONLINE) {
         errors.error(403, "Node not online.");
     }
 
-    res.status(200).send();
+    res.status(204).send();
 }));
 
 module.exports = router;

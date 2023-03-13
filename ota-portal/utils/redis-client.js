@@ -37,6 +37,10 @@ async function getObj(key) {
     return await execute("hgetall", [key]);
 }
 
+async function del(key) {
+    return await execute("del", [key]);
+}
+
 async function addToSet(key, item) {
     return await execute("sadd", [key, item]);
 }
@@ -58,6 +62,7 @@ module.exports = {
     execute: execute,
     setObj: setObj,
     getObj: getObj,
+    del: del,
     addToSet: addToSet,
     isInSet: isInSet,
     getSetMembers: getSetMembers,

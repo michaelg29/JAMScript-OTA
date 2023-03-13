@@ -202,31 +202,37 @@ const nodeExists = async function(nodeId) {
 const userNodesKeyFromReq = (req) => "user:" + req.user.username + ":nodes";
 
 /**
+ * Throw an error if the requested node does not belong to the requesting user.
+ * @param {object} req The request object.
+ * @param {string} nodeId Guid of the node.
+ */
+const belongsToOwner = async function(req, nodeId) {
+    const userNodesKey = userNodesKeyFromReq(req);
+    [err, redisRes] = await rclient.isInSet(userNodesKey, nodeId);
+    console.log('exec', err, redisRes);
+    if (err || redisRes === 0) {
+        errors.error(404, "Node not found.");
+    }
+}
+
+/**
  * Get the node from the database. Throw an error if it does not exist or if it does not belong to the user.
  * @param {object} req The request object.
  * @param {string} nodeId Guid of the node.
  * @returns [node object, node key mapping to the object in the database].
  */
-const getNodeFromOwner = async function(req, nodeid) {
-    const userNodesKey = userNodesKeyFromReq(req);
-    console.log(rclient.isInSet(userNodesKey, nodeid));
-
-    const key = nodeKey(nodeId);
-    [err, redisRes] = await rclient.getObj(key);
-    if (err || !redisRes) {
-        errors.error(404, "Node not found.");
-    }
-
-    return [redisRes, key];
+const getNodeFromOwner = async function(req, nodeId) {
+    belongsToOwner(req, nodeId);
+    return await getNode(nodeId);
 }
 
 /**
  * Throw an error if the current status is not in the list of valid origins.
- * @param {*} nodeObj Node object with the field "status".
- * @param {*} targetStatus The requested updated status.
- * @param  {...any} validOrigins The list of valid origin statuses.
+ * @param {object} nodeObj Node object with the field "status".
+ * @param {string} targetStatus The requested updated status.
+ * @param  {string[]} validOrigins The list of valid origin statuses.
  */
-const validateNodeTransition = function(nodeObj, targetStatus, ...validOrigins) {
+const validateNodeTransition = function(nodeObj, targetStatus, validOrigins) {
     if (validOrigins.indexOf(nodeObj.status) === -1) {
         errors.error(403, `Cannot transition node from ${nodeObj.status} to ${targetStatus}.`);
     }
@@ -236,9 +242,9 @@ const validateNodeTransition = function(nodeObj, targetStatus, ...validOrigins) 
  * Throw an error if the current status is invalid.
  * @param {object} nodeObj Node object with the field "status".
  * @param {string} targetStatus The requested updated status.
- * @param  {...string} invalidOrigins The list of invalid origins.
+ * @param  {string[]} invalidOrigins The list of invalid origins.
  */
-const invalidateNodeTransition = function(nodeObj, targetStatus, ...invalidOrigins) {
+const invalidateNodeTransition = function(nodeObj, targetStatus, invalidOrigins) {
     if (invalidOrigins.indexOf(nodeObj.status) !== -1) {
         errors.error(403, `Cannot transition node from ${nodeObj.status} to ${targetStatus}.`);
     }
@@ -263,6 +269,7 @@ module.exports = {
     },
     getNode: getNode,
     nodeExists: nodeExists,
+    belongsToOwner: belongsToOwner,
     getNodeFromOwner: getNodeFromOwner,
     validateNodeTransition: validateNodeTransition,
     invalidateNodeTransition: invalidateNodeTransition,

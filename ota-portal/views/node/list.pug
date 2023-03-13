@@ -1,27 +1,35 @@
 extends ../layout
 
 block content
-    h1 Node list
-    a(href='/nodes/reserve') Create new node
+  h1 Node list
+  a(href='/nodes/reserve') Create new node
 
-    table(class="nodes", id="bigTable")
-        thead
-            tr
-                th(class="seq-number")
-                th(class="node-id") ID
-                th(class="node-name") Name
-                th(class="node-type") Type
-                th(class="node-status") Status
-                th(class="node-created") Created On
-                th(class="node-registered") Last Registered On
-        tbody
-            -var i = 0;
-            each value, key in data
-                tr(class='type-' + value.type + ' status-' + value.status)
-                    td= i++
-                    td #{key}
-                    td #{value.name}
-                    td(class=value.type) #{value.type}
-                    td(class=value.status) #{value.status}
-                    td #{value.createdOn}
-                    td #{value.lastRegisteredOn}
+  table(class="nodes", id="bigTable")
+    thead
+      tr
+        th(class="seq-number")
+        th(class="node-id") ID
+        th(class="node-name") Name
+        th(class="node-type") Type
+        th(class="node-status") Status
+        th(class="node-created") Created On
+        th(class="node-registered") Last Registered On
+        th(class="node-actions") Actions
+    tbody
+      -var i = 0;
+      each value, key in data
+        tr(class='type-' + value.type + ' status-' + value.status)
+          td= i++
+          td #{key}
+          td #{value.name}
+          td(class=value.type) #{value.type}
+          td(class=value.status) #{value.status}
+          td #{value.createdOn}
+          td #{value.lastRegisteredOn}
+          td
+            input(type="submit", value="Ping Node", class="ping-node", onclick="pingNode('" + key + "')")
+            input(type="submit", value="Revoke Node", class="revoke-node", onclick="revokeNode('" + key + "')")
+            input(type="submit", value="Delete Node", class="revoke-node", onclick="deleteNode('" + key + "')")
+
+  script(src="/javascripts/api.js")
+  script(src="/javascripts/nodes/tools.js")
