@@ -25,7 +25,7 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
     let key;
     while (!key) {
         uuid = rclient.createGUID();
-        key = nodeExists(uuid);
+        key = node.nodeExists(uuid);
     }
 
     // generate public key
@@ -60,7 +60,7 @@ router.put("/:id/revoke", errors.asyncWrap(async function(req, res, next) {
 router.put("/:id/ping", errors.asyncWrap(async function(req, res, next) {
     // get requested node
     const nodeId = req.params.id;
-    [redisRes, nodeKey] = await node.getNode(nodeId);
+    [redisRes, nodeKey] = await node.getNodeFromOwner(nodeId);
 
     // can ping only if online
     if (redisRes.status !== node.statuses.ONLINE) {

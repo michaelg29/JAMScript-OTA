@@ -28,10 +28,5 @@ RUN sudo chmod +x ${JAMOTA_ROOT}/ota-portal/ota-portal.sh
 COPY ./redis/redis.sh ${JAMOTA_ROOT}/redis/redis.sh
 RUN sudo chmod +x ${JAMOTA_ROOT}/redis/redis.sh
 
-# ssh script setup
-COPY ./ssh/keygen.sh ${JAMOTA_ROOT}/ssh/keygen.sh
-COPY ./ssh/keyget.sh ${JAMOTA_ROOT}/ssh/keyget.sh
-COPY ./ssh/keyrem.sh ${JAMOTA_ROOT}/ssh/keyrem.sh
-COPY ./ssh/keyrem.sh ${JAMOTA_ROOT}/ssh/sshtest.sh
-RUN sudo chmod +x ${JAMOTA_ROOT}/ssh/*
+# ssh setup
 RUN mkdir /home/admin/.ssh

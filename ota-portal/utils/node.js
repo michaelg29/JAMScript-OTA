@@ -199,6 +199,27 @@ const nodeExists = async function(nodeId) {
         : false;
 }
 
+const userNodesKeyFromReq = (req) => "user:" + req.user.username + ":nodes";
+
+/**
+ * Get the node from the database. Throw an error if it does not exist or if it does not belong to the user.
+ * @param {object} req The request object.
+ * @param {string} nodeId Guid of the node.
+ * @returns [node object, node key mapping to the object in the database].
+ */
+const getNodeFromOwner = async function(req, nodeid) {
+    const userNodesKey = userNodesKeyFromReq(req);
+    console.log(rclient.isInSet(userNodesKey, nodeid));
+
+    const key = nodeKey(nodeId);
+    [err, redisRes] = await rclient.getObj(key);
+    if (err || !redisRes) {
+        errors.error(404, "Node not found.");
+    }
+
+    return [redisRes, key];
+}
+
 /**
  * Throw an error if the current status is not in the list of valid origins.
  * @param {*} nodeObj Node object with the field "status".
@@ -242,8 +263,9 @@ module.exports = {
     },
     getNode: getNode,
     nodeExists: nodeExists,
+    getNodeFromOwner: getNodeFromOwner,
     validateNodeTransition: validateNodeTransition,
     invalidateNodeTransition: invalidateNodeTransition,
     userNodesKey: (username) => "user:" + username + ":nodes",
-    userNodesKeyFromReq: (req) => "user:" + req.user.username + ":nodes",
+    userNodesKeyFromReq: userNodesKeyFromReq,
 };

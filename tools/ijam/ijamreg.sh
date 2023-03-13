@@ -44,27 +44,11 @@ while :; do
             show_usage
             exit
             ;;
-        --nodeid)           # Takes an option argument; ensure it has been specified.
-            if [ "$2" ]; then
-                nodeid=$2
-                shift
-            else
-                die 'ERROR: "--nodeid" requires a non-empty option argument.'
-            fi
-            ;;
         --nodeid=?*)
             nodeid=${1#*=}     # Delete everything up to "=" and assign the remainder.
             ;;
         --nodeid=)            # Handle the case of an empty
             die 'ERROR: "--nodeid" requires a non-empty option argument.'
-            ;;
-        --pubkey)           # Takes an option argument; ensure it has been specified.
-            if [ "$2" ]; then
-                pubkey=$2
-                shift
-            else
-                die 'ERROR: "--pubkey" requires a non-empty option argument.'
-            fi
             ;;
         --pubkey=?*)
             pubkey=${1#*=}     # Delete everything up to "=" and assign the remainder.
@@ -72,27 +56,11 @@ while :; do
         --pubkey=)            # Handle the case of an empty
             die 'ERROR: "--pubkey" requires a non-empty option argument.'
             ;;
-        --regkey)           # Takes an option argument; ensure it has been specified.
-            if [ "$2" ]; then
-                regkey=$2
-                shift
-            else
-                die 'ERROR: "--regkey" requires a non-empty option argument.'
-            fi
-            ;;
         --regkey=?*)
             regkey=${1#*=}     # Delete everything up to "=" and assign the remainder.
             ;;
         --regkey=)            # Handle the case of an empty
             die 'ERROR: "--regkey" requires a non-empty option argument.'
-            ;;
-        --url)           # Takes an option argument; ensure it has been specified.
-            if [ "$2" ]; then
-                url=$2
-                shift
-            else
-                die 'ERROR: "--url" requires a non-empty option argument.'
-            fi
             ;;
         --url=?*)
             url=${1#*=}     # Delete everything up to "=" and assign the remainder.

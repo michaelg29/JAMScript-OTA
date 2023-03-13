@@ -1,6 +1,8 @@
 const { spawn } = require("child_process");
 const crypto = require("crypto");
 
+const sshScriptPath = (script) => `${process.env.JAMOTA_ROOT}/tools/ssh/${script}.sh`;
+
 async function execScript(path, args, onstdout, onstderr) {
     return new Promise((resolve, reject) => {
         const proc = spawn(path, args, {
@@ -23,7 +25,7 @@ async function execScript(path, args, onstdout, onstderr) {
 
 // runs ssh-keygen and saves keys to filesystem.
 async function generateAndSaveKeys(nodeid) {
-    const execPath = "./../../ssh/keygen.sh";
+    const execPath = sshScriptPath("keygen");
     let key = "";
     await execScript(execPath, [nodeid], (data) => {
         key += data.toString();
@@ -33,7 +35,7 @@ async function generateAndSaveKeys(nodeid) {
 
 // get public key for a node
 async function getPubKey(nodeid) {
-    const execPath = "./../../ssh/keyget.sh";
+    const execPath = sshScriptPath("keyget");
     let key = "";
     await execScript(execPath, [nodeid], (data) => {
         key += data.toString();
@@ -43,7 +45,7 @@ async function getPubKey(nodeid) {
 
 // delete a key
 async function deleteKey(nodeid) {
-    const execPath = "./../../ssh/keyrem.sh";
+    const execPath = sshScriptPath("keyrem");
     let key = "";
     await execScript(execPath, [nodeid], (data) => {
         key += data.toString();
@@ -52,7 +54,7 @@ async function deleteKey(nodeid) {
 }
 
 async function testSSH(nodeid, sshUser, ip) {
-    const execPath = "./../../ssh/sshtest.sh";
+    const execPath = sshScriptPath("sshtest");
     let out = "";
     let data = crypto.randomBytes(16).toString("hex");
     await execScript(execPath, ["--nodeid", nodeid, "--sshUser", sshUser, "--ip", ip, "--data", data], (data) => {
@@ -65,7 +67,7 @@ async function testSSH(nodeid, sshUser, ip) {
 }
 
 async function pingSSH(nodeid, sshUser, ip) {
-    const execPath = "./../../ssh/sshping.sh";
+    const execPath = sshScriptPath("sshping");
     let out = "";
 
     await execScript(execPath, ["--nodeid", nodeid, "--sshUser", sshUser, "--ip", ip], (data) => {
