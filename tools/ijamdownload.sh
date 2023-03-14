@@ -19,7 +19,8 @@ with the JAMScript library so it can run JAMScript programs.
 You must have previously downloaded the ijam tools folder from the over-
 the-air website and registered your node with an ID.
 
---sshdst is the node address (i.e. pi@raspberrypi.local).
+--sshuser is the user to access the node (i.e. pi).
+--sshdst is the node IP address (i.e. raspberrypi.local).
 
 Usage: ijamdownload --sshuser=sshuser --sshdst=sshdst --nodeid=nodeid
             --pubkey=pubkey --regkey=regkey [--url=url] [--insecure]
@@ -106,38 +107,48 @@ regopt="--"
 
 if ! [ -v sshuser ]
 then
+    echo -n "Enter the username for the SSH device: "
+    read sshuser
+fi
+if [ -z sshuser ]
+then
     die "ERROR: No SSH user provided."
 fi
 
 if ! [ -v sshdst ]
+then
+    echo -n "Enter the accessible IP address of SSH device: "
+    read sshdst
+fi
+if [ -z sshdst ]
 then
     die "ERROR: No SSH target provided."
 fi
 
 if [ -v nodeid ]
 then
-    regopt="--nodeid=${nodeid} ${regopt}"
+    regopt="--nodeid='${nodeid}' ${regopt}"
 else
     die "ERROR: No node id provided."
 fi
 
 if [ -v pubkey ]
 then
-    regopt="--pubkey=${pubkey} ${regopt}"
+    regopt="--pubkey='${pubkey}' ${regopt}"
 else
     die "ERROR: No SSH public key provided."
 fi
 
 if [ -v regkey ]
 then
-    regopt="--regkey=${regkey} ${regopt}"
+    regopt="--regkey='${regkey}' ${regopt}"
 else
     die "ERROR: No network registration key provided."
 fi
 
 if [ -v url ]
 then
-    regopt="--url=${url} ${regopt}"
+    regopt="--url='${url}' ${regopt}"
 fi
 
 if [ -v insecure ]
@@ -154,4 +165,4 @@ then
 fi
 
 # run the register script on the node
-ssh ${sshuser}@${ip} -o "StrictHostKeyChecking=no" "cd ./ijam && ./ijamreg.sh ${regopt}"
+ssh ${sshuser}@${sshdst} -o "StrictHostKeyChecking=no" "cd ./ijam && ./ijamreg.sh ${regopt}"

@@ -33,8 +33,8 @@ nodeid=`[ -r nodeid ] && cat nodeid`
 regkey=`[ -r regkey ] && cat regkey`
 pubkey=
 ip=`hostname -I`
-#curl_opt="--write-out %{http_code}\n -X POST"
-curl_opt="-X POST"
+#curl_opt="--write-out %{http_code}\n -X PUT"
+curl_opt="-X PUT"
 url=https://ota.jamscript.com
 
 # Parse parameters
@@ -48,25 +48,25 @@ while :; do
             nodeid=${1#*=}     # Delete everything up to "=" and assign the remainder.
             ;;
         --nodeid=)            # Handle the case of an empty
-            die 'ERROR: "--nodeid" requires a non-empty option argument.'
+            die "ERROR: --nodeid requires a non-empty option argument."
             ;;
         --pubkey=?*)
             pubkey=${1#*=}     # Delete everything up to "=" and assign the remainder.
             ;;
         --pubkey=)            # Handle the case of an empty
-            die 'ERROR: "--pubkey" requires a non-empty option argument.'
+            die "ERROR: --pubkey requires a non-empty option argument."
             ;;
         --regkey=?*)
             regkey=${1#*=}     # Delete everything up to "=" and assign the remainder.
             ;;
         --regkey=)            # Handle the case of an empty
-            die 'ERROR: "--regkey" requires a non-empty option argument.'
+            die "ERROR: --regkey requires a non-empty option argument."
             ;;
         --url=?*)
             url=${1#*=}     # Delete everything up to "=" and assign the remainder.
             ;;
         --url=)            # Handle the case of an empty
-            die 'ERROR: "--url" requires a non-empty option argument.'
+            die "ERROR: --url requires a non-empty option argument."
             ;;
         --insecure)           # Takes an option argument; ensure it has been specified.
             curl_opt="-k ${curl_opt}"
@@ -76,7 +76,7 @@ while :; do
             break
             ;;
         -?*)
-            printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+            printf "WARN: Unknown option (ignored): %s\n" "$1" >&2
             ;;
         *)               # Default case: No more options, so break out of the loop.
             break
@@ -85,13 +85,25 @@ while :; do
     shift
 done
 
+if [ -z nodeid ]
+then
+    die "ERROR: Did not receive a node id."
+fi
+
 if [ -z pubkey ]
 then
-    die 'ERROR: Did not receive a public key.'
+    die "ERROR: Did not receive a public key."
+fi
+
+if [ -z regkey ]
+then
+    die "ERROR: Did not receive a network registration key."
 fi
 
 # Save the public key
-echo ${pubkey} >> ~/.ssh/authorized_keys
+echo ${pubkey} >> ${SSH_ROOT}/authorized_keys
+
+echo "${curl_opt} ${url}/nodes/${nodeid}/register"
 
 # Make the web request
 curl ${curl_opt} ${url}/nodes/${nodeid}/register \

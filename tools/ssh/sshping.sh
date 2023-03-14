@@ -49,4 +49,4 @@ while :; do
 done
 
 # Run blink script on device
-ssh ${sshUser}@${ip} -i ~/.ssh/id_rsa_${nodeid} "./ijam/blink.sh"
+ssh ${sshUser}@${ip} -i ${SSH_ROOT}/id_rsa_${nodeid} "./ijam/blink.sh"

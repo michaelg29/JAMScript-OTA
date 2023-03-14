@@ -7,8 +7,8 @@ die() {
 
 # Initialize variables
 nodeid=
-sshUser=
-ip=
+sshuser=
+sshdst=
 data="hello"
 
 # Parse parameters
@@ -22,20 +22,20 @@ while :; do
                 die 'ERROR: "--nodeid" requires a non-empty option argument.'
             fi
             ;;
-        --sshUser)           # Takes an option argument; ensure it has been specified.
+        --sshuser)           # Takes an option argument; ensure it has been specified.
             if [ "$2" ]; then
-                sshUser=$2
+                sshuser=$2
                 shift
             else
-                die 'ERROR: "--sshUser" requires a non-empty option argument.'
+                die 'ERROR: "--sshuser" requires a non-empty option argument.'
             fi
             ;;
-        --ip)           # Takes an option argument; ensure it has been specified.
+        --sshdst)           # Takes an option argument; ensure it has been specified.
             if [ "$2" ]; then
-                ip=$2
+                sshdst=$2
                 shift
             else
-                die 'ERROR: "--ip" requires a non-empty option argument.'
+                die 'ERROR: "--sshdst" requires a non-empty option argument.'
             fi
             ;;
         --data)           # Takes an option argument; ensure it has been specified.
@@ -57,15 +57,17 @@ while :; do
     shift
 done
 
-ssh_id="~/.ssh/id_rsa_${nodeid}"
+ssh_id="${SSH_ROOT}/id_rsa_${nodeid}"
+
+dst_dir="${sshuser}@${sshdst}:~/"
 
 # Copy SSH tool scripts
-(scp -i ${ssh_id} -rp ijam ${sshUser}@${ip}:~/ > /dev/null 2>&1)
+(scp -i ${ssh_id} -o "StrictHostKeyChecking=no" -rp ${JAMOTA_ROOT}/tools/ijam ${dst_dir} > /dev/null 2>&1)
 
 if [ 0 -eq $? ]
 then
     # Try to create file with data and read data
-    ssh ${sshUser}@${ip} -i ${ssh_id} "echo ${data} > ./ota-test && cat ./ota-test && rm -rf ./ota-test && ./ijam/blink.sh 5"
+    ssh ${sshuser}@${sshdst} -i ${ssh_id} -o "StrictHostKeyChecking=no" "echo ${data} > ./ota-test && cat ./ota-test && rm -rf ./ota-test && ./ijam/blink.sh 50"
 else
     die "Could not copy tool scripts"
 fi

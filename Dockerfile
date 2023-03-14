@@ -29,4 +29,5 @@ COPY ./redis/redis.sh ${JAMOTA_ROOT}/redis/redis.sh
 RUN sudo chmod +x ${JAMOTA_ROOT}/redis/redis.sh
 
 # ssh setup
-RUN mkdir /home/admin/.ssh
+ENV SSH_ROOT=/home/admin/.ssh
+RUN mkdir ${SSH_ROOT}
