@@ -23,7 +23,7 @@ function getIp(req) {
     if (!addr) {
         errors.error(400, "Could not get source IP address.");
     }
-    return addr;
+    return addr.trim();
 }
 
 /**

@@ -9,7 +9,3 @@ async function revokeNode(nodeId) {
 async function deleteNode(nodeId) {
     await dataRequest("DELETE", `nodes/${nodeId}`);
 }
-
-async function downloadTools(nodeId) {
-    await dataRequest("GET", `nodes/${nodeId}/tools`);
-}

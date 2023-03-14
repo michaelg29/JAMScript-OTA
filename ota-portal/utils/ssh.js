@@ -57,7 +57,7 @@ async function testSSH(nodeid, sshUser, ip) {
     const execPath = sshScriptPath("sshtest");
     let out = "";
     let data = crypto.randomBytes(16).toString("hex");
-    await execScript(execPath, ["--nodeid", nodeid, "--sshUser", sshUser, "--ip", ip, "--data", data], (data) => {
+    await execScript(execPath, ["--nodeid", nodeid, "--sshuser", sshUser, "--sshdst", ip, "--data", data], (data) => {
         out += data.toString();
     }, (data) => {
         console.log('err', data.toString());

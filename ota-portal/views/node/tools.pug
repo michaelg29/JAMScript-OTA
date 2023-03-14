@@ -5,9 +5,21 @@ block content
   h2 Download tools to put your node online
 
   p
-    | Download tools 
-    a(href="/nodes/" + nodeId + "/tools" download) here
+    | Download tools folder 
+    a(href="/jamota-tools.zip" download) here
     | .
+
+  p
+    | Generate your download script 
+    a(href="/nodes/" + nodeId + "/tools.sh" download) here
+    | .
+
+  p
+    | Test your download script 
+    //a(onclick="downloadTools('" + nodeId + "')") here
+    a(href="/nodes/test" download) here
+    | .
+
 
   p
     | Return to your 

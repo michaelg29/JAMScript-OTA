@@ -47,9 +47,9 @@ router.put("/:id/register", errors.asyncWrap(async function(req, res, next) {
     }
 
     // update node entry in DB
-    await node.obj.refresh(nodeId, nodeReq.sshUser);
+    redisRes = await node.obj.refresh(nodeId, nodeReq.sshUser);
 
-    res.status(200).send(nodeObj.regKey + "\n");
+    res.status(200).send(redisRes.regKey + "\n");
 }));
 
 router.put("/:id/online", errors.asyncWrap(async function(req, res, next) {

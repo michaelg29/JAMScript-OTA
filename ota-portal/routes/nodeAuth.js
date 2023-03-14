@@ -42,17 +42,40 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
     [err, redisRes] = await rclient.addToSet(node.userNodesKeyFromReq(req), uuid);
 
     res.render("node/tools", {
-        nodeId: uuid,
-        pubKey: pubKey,
-        regKey: nodeObj.regKey
+        nodeId: uuid
+    });
+}));
+
+/**
+ * Get form to download registration tools.
+ */
+router.get("/:id/tools", errors.asyncWrap(async function(req, res, next) {
+    const nodeId = req.params.id;
+    await node.belongsToOwner(req, nodeId);
+    res.render("node/tools", {
+        nodeId: nodeId
     });
 }));
 
 /**
  * Download registration tools.
  */
-router.get("/:id/tools", errors.asyncWrap(async function(req, res, next) {
+router.get("/:id/tools.sh", errors.asyncWrap(async function(req, res, next) {
+    // get requested node
+    const nodeId = req.params.id;
+    [redisRes, nodeKey] = await node.getNodeFromOwner(req, nodeId);
 
+    // get public key
+    const pubKey = (await ssh.getPubKey(nodeId)).trimEnd();
+
+    // get registration key
+    const regKey = redisRes.regKey;
+
+    // construct command
+    const cmd = `cd jamota-tools\n./ijamdownload.sh --nodeid="${nodeId}" --pubkey="${pubKey}" --regkey="${regKey}" --insecure --`;
+
+    res.header("content-type", "application/x-sh");
+    res.send(cmd);
 }));
 
 /**
@@ -65,6 +88,8 @@ router.purge("/:id", errors.asyncWrap(async function(req, res, next) {
 
     // update node entry in DB
     await node.obj.revoke(nodeId);
+
+    await ssh.deleteKey(nodeId);
 
     res.status(200).send();
 }));
