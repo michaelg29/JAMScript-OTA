@@ -104,7 +104,8 @@ router.delete("/:id", errors.asyncWrap(async function(req, res, next) {
 
     // can only delete if revoked or expired
     node.validateNodeTransition(redisRes, "deleted", [node.statuses.REVOKED, node.statuses.EXPIRED]);
-    await redisClient.del(nodeKey);
+    await rclient.removeFromSet(node.userNodesKeyFromReq(req), nodeId);
+    await rclient.del(nodeKey);
 
     res.sendStatus(204);
 }));
