@@ -13,6 +13,8 @@ usage() {
 
 cd ${JAMOTA_ROOT}
 
+./tools/ziptools.sh
+
 redis_opt=
 portal_opt=
 

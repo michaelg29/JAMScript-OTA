@@ -6,7 +6,8 @@ RUN apt-get update && \
     apt install -y -q wget \
     sudo \
     redis-server \
-    ssh
+    ssh \
+    zip
 
 RUN useradd -m admin && echo "admin:admin" | chpasswd && adduser admin sudo
 RUN echo "admin ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers

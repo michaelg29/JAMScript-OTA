@@ -166,3 +166,5 @@ fi
 
 # run the register script on the node
 ssh ${sshuser}@${sshdst} -o "StrictHostKeyChecking=no" "cd ./ijam && ./ijamreg.sh ${regopt}"
+
+echo "Done."
