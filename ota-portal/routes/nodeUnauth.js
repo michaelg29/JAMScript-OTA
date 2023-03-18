@@ -30,10 +30,6 @@ router.put("/:id/register", errors.asyncWrap(async function(req, res, next) {
     // cannot register/refresh if revoked
     node.invalidateNodeTransition(redisRes, node.statuses.ONLINE, [node.statuses.REVOKED]);
 
-    // validate registration key
-    if (redisRes.regKey !== nodeReq.regKey) {
-        errors.error(403, "Invalid registration key.");
-    }
     if (node.isExpired(redisRes)) {
         const expiredNodeObj = node.obj.expire();
         [err, redisRes] = await rclient.setObj(nodeKey, expiredNodeObj);

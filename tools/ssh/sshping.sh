@@ -6,21 +6,12 @@ die() {
 }
 
 # Initialize variables
-nodeid=
 sshUser=
 ip=
 
 # Parse parameters
 while :; do
     case $1 in
-        --nodeid)           # Takes an option argument; ensure it has been specified.
-            if [ "$2" ]; then
-                nodeid=$2
-                shift
-            else
-                die 'ERROR: "--nodeid" requires a non-empty option argument.'
-            fi
-            ;;
         --sshUser)           # Takes an option argument; ensure it has been specified.
             if [ "$2" ]; then
                 sshUser=$2
@@ -49,4 +40,4 @@ while :; do
 done
 
 # Run blink script on device
-ssh ${sshUser}@${ip} -i ${SSH_ROOT}/id_rsa_${nodeid} "./ijam/blink.sh"
+ssh ${sshUser}@${ip} "./ijam/blink.sh"

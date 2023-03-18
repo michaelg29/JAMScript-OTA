@@ -31,9 +31,6 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
         key = node.nodeExists(uuid);
     }
 
-    // generate public key
-    await ssh.generateAndSaveKeys(uuid);
-
     // create node entry
     await node.obj.create(uuid, nodeReq.name, nodeReq.type);
 
@@ -65,7 +62,7 @@ router.get("/:id/tools.sh", errors.asyncWrap(async function(req, res, next) {
     [redisRes, nodeKey] = await node.getNodeFromOwner(req, nodeId);
 
     // get public key
-    const pubKey = (await ssh.getPubKey(nodeId)).trimEnd();
+    const pubKey = (await ssh.getPubKey()).trimEnd();
 
     // get registration key
     const regKey = redisRes.regKey;
@@ -87,8 +84,6 @@ router.purge("/:id", errors.asyncWrap(async function(req, res, next) {
 
     // update node entry in DB
     await node.obj.revoke(nodeId);
-
-    await ssh.deleteKey(nodeId);
 
     res.status(200).send();
 }));
@@ -122,7 +117,10 @@ router.notify("/:id", errors.asyncWrap(async function(req, res, next) {
         errors.error(403, "Node not online.");
     }
 
-    res.status(204).send();
+    // ping the node
+    await ssh.pingSSH(redisRes.sshUser, redisRes.ip);
+
+    res.status(200).send();
 }));
 
 module.exports = router;
