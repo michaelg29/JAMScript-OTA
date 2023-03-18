@@ -13,7 +13,6 @@ const request = require("./../utils/request");
 const ssh = require("./../utils/ssh");
 
 const node = require("./../utils/node");
-const jamscript = require("./../utils/jamscript");
 
 router.put("/:id/register", errors.asyncWrap(async function(req, res, next) {
     const clientIp = request.getIp(req);
@@ -67,11 +66,6 @@ router.put("/:id/online", errors.asyncWrap(async function(req, res, next) {
     // validate the requesting device
     if (!(await ssh.testSSH(nodeId, nodeReq.sshUser, clientIp))) {
         errors.error(403, "Invalid SSH connection.");
-    }
-
-    // update JAMScript on the client
-    if (jamscript.needsUpdate(nodeReq.curVer)) {
-
     }
 
     // update node entry in DB

@@ -26,11 +26,11 @@ async function execScript(path, args, onstdout, onstderr) {
 // runs ssh-keygen and saves keys to filesystem.
 async function generateAndSaveKeys(nodeid) {
     const execPath = sshScriptPath("keygen");
-    let key = "";
+    let out = "";
     await execScript(execPath, [nodeid], (data) => {
-        key += data.toString();
+        out += data.toString();
     });
-    return key;
+    return out;
 }
 
 // get public key for a node

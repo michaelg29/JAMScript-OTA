@@ -3,19 +3,19 @@
     color: red;
 }
 
-.nodes td {
+.bigTable td {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: initial; 
 }
 
-.nodes th {
+.bigTable th {
     background: darkblue;
     color: white;
 }
 
-.nodes td,
-.nodes th {
+.bigTable td,
+.bigTable th {
     text-align: left;
     padding: 3px 3px;
 }

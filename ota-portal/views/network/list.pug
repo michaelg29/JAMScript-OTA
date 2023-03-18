@@ -1,0 +1,36 @@
+extends ../layout
+
+block content
+  h1 Network list
+
+  table(class="networks bigTable")
+    thead
+      tr
+        th(class="seq-number")
+        th(class="net-id") ID
+        th(class="net-name") Name
+        th(class="net-created") Created On
+        th(class="net-actions") Actions
+    tbody
+      -var i = 0;
+      each value, key in data
+        tr(class='type-' + value.type + ' status-' + value.status)
+          td= i++
+          td #{key}
+          td #{value.name}
+          td #{value.createdOn}
+          td
+            input(type="submit", value="Delete Network", class="revoke-network", onclick="deleteNetwork('" + key + "')")
+
+  h2 Create a new network
+  div
+    p
+      | Name:
+      input(type="text", name="name", id="create-network-name")
+
+    input(type="submit", value="Create network", onclick="createNetwork()")
+
+    p(class="error-msg", id="create-network-error") #{message}
+
+  script(src="/javascripts/api.js")
+  script(src="/javascripts/networks.js")

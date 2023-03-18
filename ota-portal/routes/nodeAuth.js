@@ -13,7 +13,6 @@ const request = require("./../utils/request");
 const ssh = require("./../utils/ssh");
 
 const node = require("./../utils/node");
-const redisClient = require("./../utils/redis-client");
 
 /**
  * Create a node.
@@ -33,10 +32,10 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
     }
 
     // generate public key
-    const pubKey = await ssh.generateAndSaveKeys(uuid);
+    await ssh.generateAndSaveKeys(uuid);
 
     // create node entry
-    const nodeObj = await node.obj.create(uuid, nodeReq.name, nodeReq.type);
+    await node.obj.create(uuid, nodeReq.name, nodeReq.type);
 
     // add node entry to user's list
     [err, redisRes] = await rclient.addToSet(node.userNodesKeyFromReq(req), uuid);

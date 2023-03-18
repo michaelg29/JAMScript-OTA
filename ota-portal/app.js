@@ -8,6 +8,7 @@ const auth = require("./routes/auth");
 const nodesRouter = require("./routes/nodes");
 const nodeAuthRouter = require("./routes/nodeAuth");
 const nodeUnauthRouter = require("./routes/nodeUnauth");
+const networksRouter = require("./routes/networks");
 
 var app = express();
 
@@ -42,6 +43,7 @@ app.get("/", (req, res) => {
 
 app.use("/nodes", nodesRouter);
 app.use("/nodes", nodeAuthRouter);
+app.use("/networks", networksRouter);
 
 app.use(function (req, res, next) {
     next(errors.errorObj(404, "Not found."));

@@ -29,7 +29,7 @@ function map(nodeObj) {
     };
 }
 
-async function filterNodeEntries(username, nodeIds) {
+async function filterNodeEntries(nodeIds) {
     let nodes = {};
 
     for (let nodeId of nodeIds) {
@@ -42,10 +42,13 @@ async function filterNodeEntries(username, nodeIds) {
     return nodes;
 }
 
+/**
+ * Get all nodes.
+ */
 router.get("/", errors.asyncWrap(async function(req, res, next) {
     [err, nodeIds] = await rclient.getSetMembers(node.userNodesKeyFromReq(req));
 
-    var data = await filterNodeEntries(req.user.username, nodeIds);
+    var data = await filterNodeEntries(nodeIds);
 
     if (req.headers.accept === "application/json") {
         res.send(data)
@@ -57,8 +60,10 @@ router.get("/", errors.asyncWrap(async function(req, res, next) {
     }
 }));
 
+/**
+ * Get node creation form.
+ */
 router.get("/reserve", function(req, res, next) {
-
     res.render("node/reserve");
 });
 
