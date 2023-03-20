@@ -1,6 +1,11 @@
 extends ../layout
 
 block content
+  p
+    | Download tools folder 
+    a(href="/jamota-tools.zip" download) here
+    | .
+
   h1 Network list
 
   table(class="networks bigTable")
@@ -20,6 +25,7 @@ block content
           td #{value.name}
           td #{value.createdOn}
           td
+            a(href="/networks/" + key + "/ijamreg.sh" download) Register
             input(type="submit", value="Delete Network", class="revoke-network", onclick="deleteNetwork('" + key + "')")
 
   h2 Create a new network

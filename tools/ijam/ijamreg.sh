@@ -29,12 +29,13 @@ EOF
 }
 
 # Initialize variables
-nodeid=`[ -r nodeid ] && cat nodeid`
-regkey=`[ -r regkey ] && cat regkey`
-pubkey=
 ip=`hostname -I`
-#curl_opt="--write-out %{http_code}\n -X PUT"
-curl_opt="-X PUT"
+nodeName="My device"
+nodeType="device"
+regKey=`[ -r regKey ] && cat regKey`
+
+#curl_opt="--write-out %{http_code}\n -X POST"
+curl_opt="-X POST"
 url=https://ota.jamscript.com
 
 # Parse parameters
@@ -44,23 +45,35 @@ while :; do
             show_usage
             exit
             ;;
-        --nodeid=?*)
-            nodeid=${1#*=}     # Delete everything up to "=" and assign the remainder.
+        --pubKey=?*)
+            pubKey=${1#*=}     # Delete everything up to "=" and assign the remainder.
             ;;
-        --nodeid=)            # Handle the case of an empty
-            die "ERROR: --nodeid requires a non-empty option argument."
+        --pubKey=)            # Handle the case of an empty
+            die "ERROR: --pubKey requires a non-empty option argument."
             ;;
-        --pubkey=?*)
-            pubkey=${1#*=}     # Delete everything up to "=" and assign the remainder.
+        --nodeName=?*)
+            nodeName=${1#*=}     # Delete everything up to "=" and assign the remainder.
             ;;
-        --pubkey=)            # Handle the case of an empty
-            die "ERROR: --pubkey requires a non-empty option argument."
+        --nodeName=)            # Handle the case of an empty
+            die "ERROR: --nodeName requires a non-empty option argument."
             ;;
-        --regkey=?*)
-            regkey=${1#*=}     # Delete everything up to "=" and assign the remainder.
+        --nodeType=?*)
+            nodeType=${1#*=}     # Delete everything up to "=" and assign the remainder.
             ;;
-        --regkey=)            # Handle the case of an empty
-            die "ERROR: --regkey requires a non-empty option argument."
+        --nodeType=)            # Handle the case of an empty
+            die "ERROR: --nodeType requires a non-empty option argument."
+            ;;
+        --networkId=?*)
+            networkId=${1#*=}     # Delete everything up to "=" and assign the remainder.
+            ;;
+        --networkId=)            # Handle the case of an empty
+            die "ERROR: --networkId requires a non-empty option argument."
+            ;;
+        --regKey=?*)
+            regKey=${1#*=}     # Delete everything up to "=" and assign the remainder.
+            ;;
+        --regKey=)            # Handle the case of an empty
+            die "ERROR: --regKey requires a non-empty option argument."
             ;;
         --url=?*)
             url=${1#*=}     # Delete everything up to "=" and assign the remainder.
@@ -85,41 +98,86 @@ while :; do
     shift
 done
 
-if [ -z nodeid ]
-then
-    die "ERROR: Did not receive a node id."
-fi
-
-if [ -z pubkey ]
-then
-    die "ERROR: Did not receive a public key."
-fi
-
-if [ -z regkey ]
-then
-    die "ERROR: Did not receive a network registration key."
-fi
-
 # Save the public key
-echo ${pubkey} >> ${SSH_ROOT}/authorized_keys
+if [ -v pubKey ]
+then
+    echo ${pubKey} >> ~/.ssh/authorized_keys
+else
+    die "ERROR: No public key provided."
+fi
 
-echo "${curl_opt} ${url}/nodes/${nodeid}/register"
+# Construct request body
+form="ip=${ip}"
+
+# Node ID
+if [ -r nodeId ]
+then
+    nodeId=`cat nodeId`
+else
+    nodeId=`uuid`
+fi
+form="nodeId=${nodeId}&${form}"
+
+# Node name
+if [ -v nodeName ]
+then
+    form="name=${nodeName}&${form}"
+else
+    die "ERROR: No node name provided."
+fi
+
+# Node type
+if [[ "$nodeType" =~ ^(device|fog|cloud)$ ]]
+then
+    form="type=${nodeType}&${form}"
+else
+    die "ERROR: Invalid node type."
+fi
+
+# Network ID
+if [ -v networkId ]
+then
+    form="networkId=${networkId}&${form}"
+else
+    die "ERROR: No network ID provided."
+fi
+
+# Network registration key
+if [ -v regKey ]
+then
+    form="regKey=${regKey}&${form}"
+else
+    die "ERROR: No registration key provided."
+fi
+
+# SSH user
+form="sshUser=${USER}&${form}"
+
+# Encryption key
+encKey=`for (( i=0; i<32; i++)); do printf "%x" $(($RANDOM % 256)); done;`
+form="encKey=${encKey}&${form}"
 
 # Make the web request
-curl ${curl_opt} ${url}/nodes/${nodeid}/register \
+echo "${curl_opt} ${url}/nodes"
+echo "${form}"
+curl ${curl_opt} ${url}/nodes \
     -H "Accept: text/plain" \
     -H "Content-Type: application/x-www-form-urlencoded" \
-    -d "regKey=${regkey}&sshUser=${USER}&ip=${ip}" > regkey
+    -d "${form}" > regRes
 
-res=`cat regkey`
-if [ "Invalid registration key." = "$res" ]
+# Validate output
+res=`cat regRes`
+if [ "Network not found." = "$res" ]
 then
-    die "Invalid registration key. Please re-register the node manually."
+    die "Could not find network."
+elif [ "Invalid registration key." = "$res" ]
+then
+    die "Invalid registration key. Please check your network's key."
 elif [ "Invalid SSH connection." = "$res" ]
 then
     die "Server could not SSH into your device."
 else
-    echo "Saving node id..."
-    echo ${nodeid} > nodeid
-    echo "Node registered and new registration key stored."
+    echo ${nodeId} > nodeId
+    echo ${regKey} > regKey
+    echo "Node registered and saved node id."
 fi

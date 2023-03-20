@@ -29,7 +29,7 @@ async function execScript(path, args, onstdout, onstderr) {
 async function getPubKey() {
     const execPath = sshScriptPath("keyget");
     let key = "";
-    await execScript(execPath, (data) => {
+    await execScript(execPath, [], (data) => {
         key += data.toString();
     });
     return key;
@@ -39,7 +39,7 @@ async function testSSH(sshUser, ip) {
     const execPath = sshScriptPath("sshtest");
     let out = "";
     let data = crypto.randomBytes(16).toString("hex");
-    await execScript(execPath, ["--sshuser", sshUser, "--sshdst", ip, "--data", data], (data) => {
+    await execScript(execPath, ["--sshUser", sshUser, "--sshDst", ip, "--data", data], (data) => {
         out += data.toString();
     }, (data) => {
         console.log('err', data.toString());

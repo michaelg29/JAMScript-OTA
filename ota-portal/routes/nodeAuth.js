@@ -15,66 +15,6 @@ const ssh = require("./../utils/ssh");
 const node = require("./../utils/node");
 
 /**
- * Create a node.
- */
-router.post("/", errors.asyncWrap(async function(req, res, next) {
-    const nodeReq = request.validateBody(req, ["name", "type"]);
-    if (!node.validType(nodeReq.type)) {
-        errors.error(400, `Invalid node type, must be one of: ${node.typesList}.`, "node/reserve");
-    }
-
-    // generate new uuid
-    let uuid;
-    let key;
-    while (!key) {
-        uuid = rclient.createGUID();
-        key = node.nodeExists(uuid);
-    }
-
-    // create node entry
-    await node.obj.create(uuid, nodeReq.name, nodeReq.type);
-
-    // add node entry to user's list
-    [err, redisRes] = await rclient.addToSet(node.userNodesKeyFromReq(req), uuid);
-
-    res.render("node/tools", {
-        nodeId: uuid
-    });
-}));
-
-/**
- * Get form to download registration tools.
- */
-router.get("/:id/tools", errors.asyncWrap(async function(req, res, next) {
-    const nodeId = req.params.id;
-    await node.belongsToOwner(req, nodeId);
-    res.render("node/tools", {
-        nodeId: nodeId
-    });
-}));
-
-/**
- * Download registration tools.
- */
-router.get("/:id/tools.sh", errors.asyncWrap(async function(req, res, next) {
-    // get requested node
-    const nodeId = req.params.id;
-    [redisRes, nodeKey] = await node.getNodeFromOwner(req, nodeId);
-
-    // get public key
-    const pubKey = (await ssh.getPubKey()).trimEnd();
-
-    // get registration key
-    const regKey = redisRes.regKey;
-
-    // construct command
-    const cmd = `cd jamota-tools\n./ijamdownload.sh --nodeid="${nodeId}" --pubkey="${pubKey}" --regkey="${regKey}" --insecure --`;
-
-    res.header("content-type", "application/x-sh");
-    res.send(cmd);
-}));
-
-/**
  * Revoke a node.
  */
 router.purge("/:id", errors.asyncWrap(async function(req, res, next) {

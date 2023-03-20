@@ -27,22 +27,26 @@ const isExpired = function(nodeObj) {
 
 /**
  * Create a new node object and store in the database.
- * @param {string} id Guid of the node.
- * @param {string} name Name.
+ * @param {string} id UUID of the node.
+ * @param {string} id UUID of the network the node is apart of.
+ * @param {string} name Name of the node.
  * @param {string} type Type of the node, selected from `types`.
+ * @param {string} sshUser The user to SSH into the node with.
+ * @param {string} encKey The encryption key for the node.
  * @returns The created node object.
  */
-const newNodeObj = async function(id, name, type) {
+const newNodeObj = async function(id, networkId, name, type, sshUser, encKey) {
     const nodeObj = {
         status: statuses.CREATED,
         name: name,
         type: type,
-        devKey: keys.generateKey(),
-        sshUser: "",
+        encKey: encKey,
+        sshUser: sshUser,
         ip: "",
         createdOn: Date.now(),
         lastRegisteredOn: 0,
         lastOnlineOn: 0,
+        networkId: networkId,
     };
 
     [err, redisRes] = await rclient.setObj(nodeKey(id), nodeObj);
@@ -155,8 +159,8 @@ const nodeExists = async function(nodeId) {
     [err, redisRes] = await rclient.execute("keys", [key]);
 
     return (!redisRes || redisRes.length === 0)
-        ? key
-        : false;
+        ? false
+        : key;
 }
 
 const userNodesKeyFromReq = (req) => "user:" + req.user.username + ":nodes";
@@ -232,4 +236,5 @@ module.exports = {
     invalidateNodeTransition: invalidateNodeTransition,
     userNodesKey: (username) => "user:" + username + ":nodes",
     userNodesKeyFromReq: userNodesKeyFromReq,
+    networkNodesKey: (networkId) => "network:" + networkId + ":nodes",
 };

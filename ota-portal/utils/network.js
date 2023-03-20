@@ -50,8 +50,8 @@ const networkExists = async function(netId) {
     [err, redisRes] = await rclient.execute("keys", [key]);
 
     return (!redisRes || redisRes.length === 0)
-        ? key
-        : false;
+        ? false
+        : key;
 }
 
 const userNetworksKeyFromReq = (req) => "user:" + req.user.username + ":networks";

@@ -13,6 +13,58 @@ const request = require("./../utils/request");
 const ssh = require("./../utils/ssh");
 
 const node = require("./../utils/node");
+const network = require("./../utils/network");
+const keys = require("./../utils/keys");
+
+/**
+ * Register a node.
+ */
+router.post("/", errors.asyncWrap(async function(req, res, next) {
+    const clientIp = request.getIp(req);
+    const nodeReq = request.validateBody(req, ["nodeId?", "name", "type", "networkId", "regKey", "sshUser", "encKey"]);
+
+    if (!node.validType(nodeReq.type)) {
+        errors.error(400, `Invalid node type, must be one of: ${node.typesList}.`);
+    }
+
+    // validate registration key before accessing database
+    if (!keys.validateKey(nodeReq.regKey)) {
+        console.log("not good key");
+        errors.error(403, "Invalid registration key.");
+    }
+
+    // validate network
+    const networkId = nodeReq.networkId;
+    [redisRes, networkKey] = await network.getNetwork(networkId);
+    if (redisRes.regKey !== nodeReq.regKey) {
+        console.log("mismatch");
+        errors.error(403, "Invalid registration key.");
+    }
+
+    // test SSH key
+    if (!(await ssh.testSSH(nodeReq.sshUser, clientIp))) {
+        errors.error(403, "Invalid SSH connection.");
+    }
+
+    // determine node ID
+    const nodeId = nodeReq.nodeId || rclient.createGUID();
+    let key;
+    while (!key) {
+        key = node.nodeExists(nodeId);
+        nodeId = rclient.createGUID;
+    }
+
+    // create object
+    await node.obj.create(nodeId, networkId, nodeReq.name, nodeReq.type, nodeReq.sshUser, nodeReq.encKey);
+
+    // add node entry to user's list
+    [err, redisRes] = await rclient.addToSet(node.userNodesKeyFromReq(req), nodeId);
+
+    // add node entry to network's list
+    [err, redisRes] = await rclient.addToSet(node.networkNodesKey(networkId));
+
+    res.status(201).send(nodeId + "\n");
+}));
 
 router.put("/:id/register", errors.asyncWrap(async function(req, res, next) {
     const clientIp = request.getIp(req);
@@ -47,6 +99,9 @@ router.put("/:id/register", errors.asyncWrap(async function(req, res, next) {
     res.status(200).send(redisRes.regKey + "\n");
 }));
 
+/**
+ * Set the node as online.
+ */
 router.put("/:id/online", errors.asyncWrap(async function(req, res, next) {
     const clientIp = request.getIp(req);
     const nodeReq = request.validateBody(req, ["regKey", "sshUser", "curVer"]);
@@ -70,6 +125,9 @@ router.put("/:id/online", errors.asyncWrap(async function(req, res, next) {
     res.status(200).send();
 }));
 
+/**
+ * Set the node as offline.
+ */
 router.put("/:id/offline", errors.asyncWrap(async function(req, res, next) {
     // get requested node
     const nodeId = req.params.id;

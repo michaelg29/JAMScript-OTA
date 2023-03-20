@@ -60,11 +60,4 @@ router.get("/", errors.asyncWrap(async function(req, res, next) {
     }
 }));
 
-/**
- * Get node creation form.
- */
-router.get("/reserve", function(req, res, next) {
-    res.render("node/reserve");
-});
-
 module.exports = router;

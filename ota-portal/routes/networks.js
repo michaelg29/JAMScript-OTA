@@ -8,6 +8,7 @@ const router = express.Router();
 const rclient = require("../utils/redis-client");
 const errors = require("../utils/httperror");
 const request = require("../utils/request");
+const ssh = require("./../utils/ssh");
 
 const network = require("../utils/network");
 
@@ -32,6 +33,27 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
     [err, redisRes] = await rclient.addToSet(network.userNetworksKeyFromReq(req), uuid);
 
     res.status(201).send(networkEntry);
+}));
+
+/**
+ * Get the registration script command for a network.
+ */
+router.get("/:id/ijamreg.sh", errors.asyncWrap(async function(req, res, next) {
+    // get requested network
+    const networkId = req.params.id;
+    [redisRes, networkKey] = await network.getNetworkFromOwner(req, networkId);
+
+    // get public key
+    const pubKey = (await ssh.getPubKey()).trimEnd();
+
+    // get registration key
+    const regKey = redisRes.regKey;
+
+    // construct command
+    const cmd = `cd jamota-tools\n./ijamdownload.sh --networkId="${networkId}" --pubKey="${pubKey}" --regKey="${regKey}" --insecure --`;
+
+    res.header("content-type", "application/x-sh");
+    res.send(cmd);
 }));
 
 /**

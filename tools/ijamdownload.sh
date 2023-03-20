@@ -19,22 +19,26 @@ with the JAMScript library so it can run JAMScript programs.
 You must have previously downloaded the ijam tools folder from the over-
 the-air website and registered your node with an ID.
 
---sshuser is the user to access the node (i.e. pi).
---sshdst is the node IP address (i.e. raspberrypi.local).
+--sshUser is the user to access the node (i.e. pi).
+--sshDst is the node IP address (i.e. raspberrypi.local).
 
-Usage: ijamdownload --sshuser=sshuser --sshdst=sshdst --nodeid=nodeid
-            --pubkey=pubkey --regkey=regkey [--url=url] [--insecure]
+Usage: ijamdownload --sshUser=sshUser --sshDst=sshDst --pubKey=pubKey
+            --nodeName=nodeName --nodeType=nodeType --networkId=networkId 
+            --regKey=regKey [--url=url] [--insecure] [--nocopy]
 
 Options:
-    sshuser:    The user to SSH into the node with.
-    sshdst:     The IP address of the node to SSH into relative to your device.
-    nodeid:     The GUID of the node provided by the OTA portal.
-    pubkey:     The OTA controller's public key provided by the OTA poral.
-    regkey:     Registration key for your network.
+    sshUser:    The user to SSH into the node with.
+    sshDst:     The IP address of the node to SSH into relative to your device.
+    pubKey:     The OTA controller's public key provided by the OTA poral.
+    nodeName:   The name of the node.
+    nodeType:   The type of the node (device, fog, or cloud).
+    networkId:  The network ID.
+    regKey:     Registration key for your network.
     url:        Accessible URL of the OTA portal. 
                     Defaults to https://ota.jamscript.com.
-    insecure:   Whether to verify the OTA portal's HTTPS certificate.
-                    Defaults to false.
+    insecure:   Whether to not verify the OTA portal's HTTPS certificate.
+                    Defaults to false (i.e. will verify).
+    nocopy:     Whether to skip copying the tools files.
 
 EOF
 }
@@ -49,44 +53,59 @@ while :; do
             show_usage
             exit
             ;;
-        --sshuser=?*)
-            sshuser=${1#*=}     # Delete everything up to "=" and assign the remainder.
+        --sshUser=?*)
+            sshUser=${1#*=}     # Delete everything up to "=" and assign the remainder.
             ;;
-        --sshuser=)            # Handle the case of an empty
-            die "ERROR: "--sshuser" requires a non-empty option argument."
+        --sshUser=)            # Handle the case of an empty
+            die "ERROR: "--sshUser" requires a non-empty option argument."
             ;;
-        --sshdst=?*)
-            sshdst=${1#*=}     # Delete everything up to "=" and assign the remainder.
+        --sshDst=?*)
+            sshDst=${1#*=}     # Delete everything up to "=" and assign the remainder.
             ;;
-        --sshdst=)            # Handle the case of an empty
-            die "ERROR: "--sshdst" requires a non-empty option argument."
+        --sshDst=)            # Handle the case of an empty
+            die "ERROR: "--sshDst" requires a non-empty option argument."
             ;;
-        --nodeid=?*)
-            nodeid=${1#*=}     # Delete everything up to "=" and assign the remainder.
+        --pubKey=?*)
+            pubKey=${1#*=}     # Delete everything up to "=" and assign the remainder.
             ;;
-        --nodeid=)            # Handle the case of an empty
-            die "ERROR: "--nodeid" requires a non-empty option argument."
+        --pubKey=)            # Handle the case of an empty
+            die "ERROR: --pubKey requires a non-empty option argument."
             ;;
-        --pubkey=?*)
-            pubkey=${1#*=}     # Delete everything up to "=" and assign the remainder.
+        --nodeName=?*)
+            nodeName=${1#*=}     # Delete everything up to "=" and assign the remainder.
             ;;
-        --pubkey=)            # Handle the case of an empty
-            die "ERROR: "--pubkey" requires a non-empty option argument."
+        --nodeName=)            # Handle the case of an empty
+            die "ERROR: --nodeName requires a non-empty option argument."
             ;;
-        --regkey=?*)
-            regkey=${1#*=}     # Delete everything up to "=" and assign the remainder.
+        --nodeType=?*)
+            nodeType=${1#*=}     # Delete everything up to "=" and assign the remainder.
             ;;
-        --regkey=)            # Handle the case of an empty
-            die "ERROR: "--regkey" requires a non-empty option argument."
+        --nodeType=)            # Handle the case of an empty
+            die "ERROR: --nodeType requires a non-empty option argument."
+            ;;
+        --networkId=?*)
+            networkId=${1#*=}     # Delete everything up to "=" and assign the remainder.
+            ;;
+        --networkId=)            # Handle the case of an empty
+            die "ERROR: --networkId requires a non-empty option argument."
+            ;;
+        --regKey=?*)
+            regKey=${1#*=}     # Delete everything up to "=" and assign the remainder.
+            ;;
+        --regKey=)            # Handle the case of an empty
+            die "ERROR: --regKey requires a non-empty option argument."
             ;;
         --url=?*)
             url=${1#*=}     # Delete everything up to "=" and assign the remainder.
             ;;
         --url=)            # Handle the case of an empty
-            die "ERROR: "--url" requires a non-empty option argument."
+            die "ERROR: --url requires a non-empty option argument."
             ;;
         --insecure)
             insecure="true"
+            ;;
+        --nocopy)
+            nocopy="true"
             ;;
         --)              # End of all options.
             shift
@@ -105,43 +124,63 @@ done
 # construct registration options
 regopt="--"
 
-if ! [ -v sshuser ]
+if ! [ -v sshUser ]
 then
     echo -n "Enter the username for the SSH device: "
-    read sshuser
+    read sshUser
 fi
-if [ -z sshuser ]
+if [ -z sshUser ]
 then
     die "ERROR: No SSH user provided."
 fi
 
-if ! [ -v sshdst ]
+if ! [ -v sshDst ]
 then
     echo -n "Enter the accessible IP address of SSH device: "
-    read sshdst
+    read sshDst
 fi
-if [ -z sshdst ]
+if [ -z sshDst ]
 then
     die "ERROR: No SSH target provided."
 fi
 
-if [ -v nodeid ]
+if [ -v pubKey ]
 then
-    regopt="--nodeid='${nodeid}' ${regopt}"
-else
-    die "ERROR: No node id provided."
-fi
-
-if [ -v pubkey ]
-then
-    regopt="--pubkey='${pubkey}' ${regopt}"
+    regopt="--pubKey='${pubKey}' ${regopt}"
 else
     die "ERROR: No SSH public key provided."
 fi
 
-if [ -v regkey ]
+if ! [ -v nodeName ]
 then
-    regopt="--regkey='${regkey}' ${regopt}"
+    echo -n "Enter the node name: "
+    read nodeName
+fi
+if [ -z nodeName ]
+then
+    die "ERROR: No node name provided."
+fi
+
+if ! [ -v nodeType ]
+then
+    echo -n "Enter the node type (device|fog|cloud): "
+    read nodeType
+fi
+if [ -z nodeType ]
+then
+    die "ERROR: No node type provided."
+fi
+
+if [ -v networkId ]
+then
+    regopt="--networkId='${networkId}' ${regopt}"
+else
+    die "ERROR: No network ID provided."
+fi
+
+if [ -v regKey ]
+then
+    regopt="--regKey='${regKey}' ${regopt}"
 else
     die "ERROR: No network registration key provided."
 fi
@@ -156,15 +195,17 @@ then
     regopt="--insecure ${regopt}"
 fi
 
-# Copy SSH tool scripts
-#res=(scp -i ${ssh_id} -rp ijam ${sshuser}@${sshdst}:~/ > /dev/null 2>&1)
-(scp -rp ijam ${sshuser}@${sshdst}:~/)
-if [ $? -ne 0 ]
+if ! [ -v nocopy ]
 then
-    die "ERROR: Could not copy tool scripts to ${sshuser}@${sshdst}"
+    # Copy SSH tool scripts
+    (scp -r ijam/ ${sshUser}@${sshDst}:~/)
+    if [ $? -ne 0 ]
+    then
+        die "ERROR: Could not copy tool scripts to ${sshUser}@${sshDst}"
+    fi
 fi
 
 # run the register script on the node
-ssh ${sshuser}@${sshdst} -o "StrictHostKeyChecking=no" "cd ./ijam && ./ijamreg.sh ${regopt}"
+ssh ${sshUser}@${sshDst} -o "StrictHostKeyChecking=no" "cd ./ijam && ./ijamreg.sh ${regopt}"
 
 echo "Done."
