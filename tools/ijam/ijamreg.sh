@@ -98,14 +98,6 @@ while :; do
     shift
 done
 
-# Save the public key
-if [ -v pubKey ]
-then
-    echo ${pubKey} >> ~/.ssh/authorized_keys
-else
-    die "ERROR: No public key provided."
-fi
-
 # Construct request body
 form="ip=${ip}"
 

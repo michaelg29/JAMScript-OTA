@@ -146,7 +146,10 @@ fi
 
 if [ -v pubKey ]
 then
-    regopt="--pubKey='${pubKey}' ${regopt}"
+    # copy ssh keys
+    echo "asdf" > id_rsa
+    echo $pubKey > id_rsa.pub
+    ssh-copy-id -i id_rsa ${sshUser}@${sshDst}
 else
     die "ERROR: No SSH public key provided."
 fi

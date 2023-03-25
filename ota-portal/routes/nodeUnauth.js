@@ -29,7 +29,6 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
 
     // validate registration key before accessing database
     if (!keys.validateKey(nodeReq.regKey)) {
-        console.log("not good key");
         errors.error(403, "Invalid registration key.");
     }
 
@@ -37,7 +36,6 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
     const networkId = nodeReq.networkId;
     [redisRes, networkKey] = await network.getNetwork(networkId);
     if (redisRes.regKey !== nodeReq.regKey) {
-        console.log("mismatch");
         errors.error(403, "Invalid registration key.");
     }
 
@@ -47,18 +45,15 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
     }
 
     // determine node ID
-    const nodeId = nodeReq.nodeId || rclient.createGUID();
+    let nodeId = nodeReq.nodeId || rclient.createGUID();
     let key;
     while (!key) {
         key = node.nodeExists(nodeId);
-        nodeId = rclient.createGUID;
+        nodeId = rclient.createGUID();
     }
 
     // create object
     await node.obj.create(nodeId, networkId, nodeReq.name, nodeReq.type, nodeReq.sshUser, nodeReq.encKey);
-
-    // add node entry to user's list
-    [err, redisRes] = await rclient.addToSet(node.userNodesKeyFromReq(req), nodeId);
 
     // add node entry to network's list
     [err, redisRes] = await rclient.addToSet(node.networkNodesKey(networkId));
