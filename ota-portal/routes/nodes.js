@@ -9,12 +9,13 @@ const rclient = require("./../utils/redis-client");
 const errors = require("./../utils/httperror");
 
 const node = require("./../utils/node");
+const network = require("./../utils/network");
 
 function applyFilter(nodeObj) {
     return true;
 }
 
-function map(nodeObj) {
+function map(network, nodeObj) {
     const createdOn = Number.parseInt(nodeObj.createdOn);
     const lastRegisteredOn = Number.parseInt(nodeObj.lastRegisteredOn);
 
@@ -22,6 +23,7 @@ function map(nodeObj) {
         name: nodeObj.name,
         type: nodeObj.type,
         status: nodeObj.status,
+        networkName: network.name,
         createdOn: new Date(createdOn).toDateString(),
         lastRegisteredOn: lastRegisteredOn === 0
             ? 'Not registered yet'
@@ -29,13 +31,25 @@ function map(nodeObj) {
     };
 }
 
-async function filterNodeEntries(nodeIds) {
+async function filterNodeEntries(req, networkIds) {
     let nodes = {};
+    const requestedNetworkId = req.query["network-id"] || false;
 
-    for (let nodeId of nodeIds) {
-        [err, nodeObj] = await rclient.getObj(node.nodeKey(nodeId));
-        if (nodeObj && applyFilter(nodeObj)) {
-            nodes[nodeId] = map(nodeObj);
+    for (let networkId of networkIds) {
+        if (requestedNetworkId && 
+            networkId !== requestedNetworkId && 
+            await network.belongsToOwner(req, networkId)) {
+            continue;
+        }
+
+        let [network, networkKey] = await network.getNetwork(networkId);
+        let [err, nodeIds] = await rclient.getSetMembers(node.networkNodesKey(networkId));
+
+        for (let nodeId of nodeIds) {
+            [err, nodeObj] = await rclient.getObj(node.nodeKey(nodeId));
+            if (nodeObj && applyFilter(nodeObj)) {
+                nodes[nodeId] = map(network, nodeObj);
+            }
         }
     }
 
@@ -45,10 +59,10 @@ async function filterNodeEntries(nodeIds) {
 /**
  * Get all nodes.
  */
-router.get("/", errors.asyncWrap(async function(req, res, next) {
-    [err, nodeIds] = await rclient.getSetMembers(node.userNodesKeyFromReq(req));
+router.get("/", errors.asyncWrap(async function(req, res) {
+    [err, networkIds] = await rclient.getSetMembers(network.userNetworksKeyFromReq(req));
 
-    var data = await filterNodeEntries(nodeIds);
+    var data = await filterNodeEntries(req, networkIds);
 
     if (req.headers.accept === "application/json") {
         res.send(data)

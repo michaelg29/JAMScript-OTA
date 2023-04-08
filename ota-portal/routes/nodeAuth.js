@@ -13,6 +13,7 @@ const request = require("./../utils/request");
 const ssh = require("./../utils/ssh");
 
 const node = require("./../utils/node");
+const network = require("./../utils/network");
 
 /**
  * Revoke a node.
@@ -20,7 +21,7 @@ const node = require("./../utils/node");
 router.purge("/:id", errors.asyncWrap(async function(req, res, next) {
     // get requested node
     const nodeId = req.params.id;
-    node.belongsToOwner(req, nodeId);
+    await node.getNodeFromOwner(req, nodeId);
 
     // update node entry in DB
     await node.obj.revoke(nodeId);
@@ -38,7 +39,7 @@ router.delete("/:id", errors.asyncWrap(async function(req, res, next) {
 
     // can only delete if revoked or expired
     node.validateNodeTransition(redisRes, "deleted", [node.statuses.REVOKED, node.statuses.EXPIRED]);
-    await rclient.removeFromSet(node.userNodesKeyFromReq(req), nodeId);
+    await rclient.removeFromSet(node.networkNodesKey(redisRes.networkId), nodeId);
     await rclient.del(nodeKey);
 
     res.sendStatus(204);

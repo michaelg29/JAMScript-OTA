@@ -34,8 +34,8 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
 
     // validate network
     const networkId = nodeReq.networkId;
-    [redisRes, networkKey] = await network.getNetwork(networkId);
-    if (redisRes.regKey !== nodeReq.regKey) {
+    let [networkObj, networkKey] = await network.getNetwork(networkId);
+    if (networkObj.regKey !== nodeReq.regKey) {
         errors.error(403, "Invalid registration key.");
     }
 
@@ -53,7 +53,7 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
     }
 
     // create object
-    await node.obj.create(nodeId, networkId, nodeReq.name, nodeReq.type, nodeReq.sshUser, nodeReq.encKey);
+    await node.obj.create(nodeId, networkId, networkObj.username, nodeReq.name, nodeReq.type, nodeReq.sshUser, nodeReq.encKey);
 
     // add node entry to network's list
     [err, redisRes] = await rclient.addToSet(node.networkNodesKey(networkId));

@@ -27,7 +27,7 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
     }
 
     // create network entry
-    const networkEntry = await network.obj.create(uuid, netReq.name);
+    const networkEntry = await network.obj.create(uuid, req.user.username, netReq.name);
 
     // add network to user's list
     [err, redisRes] = await rclient.addToSet(network.userNetworksKeyFromReq(req), uuid);

@@ -7,14 +7,16 @@ const networkKey = (networkId) => "network:" + networkId;
 /**
  * Create a new network object.
  * @param {string} id Guid of the network.
+ * @param {string} username Username of the requesting user.
  * @param {string} name Name of the network.
  * @returns The created network object.
  */
-const newNetworkObj = async function(id, name) {
+const newNetworkObj = async function(id, username, name) {
     const networkObj = {
         name: name,
         regKey: keys.generateKey(),
         createdOn: Date.now(),
+        username: username,
     };
 
     [err, redisRes] = await rclient.setObj(networkKey(id), networkObj);

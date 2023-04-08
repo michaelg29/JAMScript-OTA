@@ -7,23 +7,36 @@ die() {
 
 show_usage() {
     cat << EOF
-Registers the current device with the JAMScript Over-the-Air system.
-
-ijamreg --pubkey=pubkey --nodeid=node_uuid --regkey=regkey
 Makes an HTTPS request to the OTA system to register a device. You must
-have created a device entry for your user in the OTA portal by visiting
-your dashboard and clicking 'Create node.' The OTA portal will provide
-you with the SSH public key, the node ID, and the registration key for
-this command.
+have created a network entry for your user in the OTA portal by visiting
+your dashboard and clicking 'Create network.' The OTA portal will provide
+you with the network ID and registration key for this command.
 
-If you do not provide the --nodeid or --regkey options, those values will
-be read from the files "nodeid" and "regkey", respectively.
+You must have copied the server's provided SSH public key to this node.
+This is programmed in to the "ijamdownload.sh" script that calls this
+script in the command "ssh-copy-id".
+
+If you do not provide the --regkey options, that value will
+be read from the file "regkey".
 
 Use the --insecure option to tell curl to not check the HTTPS
 certificates when making the request.
 
-Usage: ijamreg --pubkey=pubkey [--nodeid=node_uuid] [--regkey=regkey]
-                        [--insecure]
+Usage: ijamdownload --nodeName=nodeName --nodeType=nodeType
+            --networkId=networkId --regKey=regKey [--url=url]
+            [--insecure]
+
+Options:
+    nodeName:   The name of the node.
+    nodeType:   The type of the node (device, fog, or cloud).
+    networkId:  The network ID.
+    regKey:     Registration key for your network.
+    url:        Accessible URL of the OTA portal. 
+                    Defaults to https://ota.jamscript.com.
+    insecure:   Whether to not verify the OTA portal's HTTPS certificate.
+                    Defaults to false (i.e. will verify).
+
+Usage: ijamreg [--regkey=regkey] [--insecure]
 
 EOF
 }
@@ -44,12 +57,6 @@ while :; do
         --help)
             show_usage
             exit
-            ;;
-        --pubKey=?*)
-            pubKey=${1#*=}     # Delete everything up to "=" and assign the remainder.
-            ;;
-        --pubKey=)            # Handle the case of an empty
-            die "ERROR: --pubKey requires a non-empty option argument."
             ;;
         --nodeName=?*)
             nodeName=${1#*=}     # Delete everything up to "=" and assign the remainder.
