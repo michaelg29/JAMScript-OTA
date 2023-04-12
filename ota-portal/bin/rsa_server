@@ -1,0 +1,100 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+const crypto = require("crypto");
+
+const pubKeyFile = Buffer.from(fs.readFileSync("cert_rsa.pem", {encoding: "utf-8"}));;
+const pubKey = new Uint8Array(pubKeyFile.byteLength);
+pubKeyFile.copy(pubKey);
+
+const privKey = Buffer.from(fs.readFileSync("key_rsa.pem", {encoding: "utf-8"}));
+
+const cert_req_magic = new Uint8Array([0x8c, 0x12, 0x4d, 0x3f]);
+
+var createUUID = function(delimeter) {
+    return `xxxxxxxx${delimeter}xxxx${delimeter}4xxx${delimeter}yxxx${delimeter}xxxxxxxxxxxx`.replace(/[xy]/g, function(c) {
+        var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+        return v.toString(16);
+    });
+}
+
+const net = require("net");
+const host = "localhost";
+const port = 8444;
+const server = net.createServer(onClientConnection);
+function onClientConnection(sock) {
+    //Log when a client connnects.
+    console.log(`${sock.remoteAddress}:${sock.remotePort} Connected`);
+
+    sock.status = 0;
+    
+	//Handle the client data.
+    sock.on('data', function(data) {
+        //Log data received from the client
+        var buf = Buffer.from(data);
+        console.log("Received", buf.byteLength, "bytes");
+        console.log("Current status", sock.status);
+        
+		// prepare and send a response to the client 
+		switch (sock.status) {
+            case 0: {
+                ++sock.status;
+
+                // verify magic number
+                if (!buf.byteLength == 4) {
+                    sock.end();
+                    break;
+                }
+                let array = new Uint8Array(4);
+                buf.copy(array);
+                if (array[0] !== cert_req_magic[0] ||
+                    array[1] !== cert_req_magic[1] ||
+                    array[2] !== cert_req_magic[2] ||
+                    array[3] !== cert_req_magic[3]) {
+                        sock.end();
+                        break;
+                }
+
+                // send certificate file
+                sock.write(pubKey, "utf-8");
+                console.log("Sent", pubKey.length, "bytes");
+                
+                break;
+            }
+            case 1: {
+                // get message and decrypt
+                const decrypted = crypto.privateDecrypt({
+                    key: privKey,
+                    padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+                    oaepHash: "sha256"
+                }, buf);
+                console.log("Decrypted", decrypted.toString());
+
+                // return uuid as byte array
+                let uuid = createUUID("");
+                let array = new Uint8Array(16);
+                Buffer.from(uuid, "hex").copy(array);
+                console.log("New node with UUID", uuid);
+                sock.write(array, "utf-8");
+                sock.end();
+
+                break;
+            }
+        }
+        
+	});
+    
+	//Handle when client connection is closed
+    sock.on('close',function(){
+        console.log(`${sock.remoteAddress}:${sock.remotePort} Connection closed`);
+    });
+    
+	//Handle Client connection error.
+    sock.on('error',function(error){
+        console.error(`${sock.remoteAddress}:${sock.remotePort} Connection Error ${error}`);
+    });
+}
+
+server.listen(port, host, 16, () => {
+    console.log("started", port);
+});
