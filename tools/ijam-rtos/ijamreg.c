@@ -15,10 +15,11 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "ijam.h"
+
 #define CERT_REQ_MAGIC 0x3f4d128c
 #define BUF_SIZE 1024
 #define KEY_SIZE 800
-#define GUID_SIZE 16
 
 int sock;
 struct sockaddr_in echoServAddr;
@@ -27,12 +28,6 @@ char *servIP = "127.0.0.1";
 static unsigned char buffer[BUF_SIZE];
 static unsigned char err[BUF_SIZE];
 static unsigned char key[KEY_SIZE + 1];
-
-/** UUID structure (16 bytes). */
-#define UUID_SIZE 16
-typedef struct uuid {
-    unsigned char bytes[UUID_SIZE];
-} uuid_t;
 
 /** Kill the program. */
 void closeMsg(char *message)
@@ -117,12 +112,26 @@ int main(int argc, char *argv[]) {
     key[KEY_SIZE] = 0;
 
     // send encrypted message (512 bytes)
-    int encLen = encrypt(echoString, strlen(echoString));
+    register_request_t node = {
+        1234,
+        {{ 0xfa, 0x9e, 0x7d, 0x38, 0x6c, 0xf1, 0x41, 0x8f, 0x85, 0x91, 0xa0, 0x8a, 0x57, 0x9c, 0xd8, 0x8d }},
+        {{ 0xc2, 0x50, 0x1f, 0x96, 0x18, 0x6c, 0x4a, 0x9e, 0x99, 0xb0, 0x59, 0xc7, 0xe3, 0x31, 0x82, 0x0d }},
+        { 0x4a, 0xc8, 0xd3, 0x9b, 0x6a, 0x24, 0x1c, 0xcb, 0x48, 0xb8, 0x7f, 0xfa, 0xd0, 0xf4, 0xf6, 0xf8, 0xf4, 0xf6, 0x23, 0xf2 },
+        device
+    };
+    unsigned char buf[REGISTER_REQUEST_T_SIZE];
+    memcpy(buf, &node, REGISTER_REQUEST_T_SIZE);
+    printf("Sending: ");
+    for (int i = 0; i < REGISTER_REQUEST_T_SIZE; ++i) {
+        printf("%02x", buf[i] & 0xff);
+    }
+    printf("\n");
+    int encLen = encrypt(buf, REGISTER_REQUEST_T_SIZE);
     sendBuffer(encLen);
 
     // receive UUID
     recvBytes = receiveBuffer();
-    if (recvBytes < GUID_SIZE) {
+    if (recvBytes < UUID_SIZE) {
         closeMsg("Incorrect GUID response.");
     }
     uuid_t *uuid = (uuid_t*)buffer;

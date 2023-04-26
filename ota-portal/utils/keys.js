@@ -2,7 +2,7 @@
  * Utility functions for key generation and validation.
  */
 
-const regKeyLen = 32;
+const regKeyLen = 20;
 const minRegKeySum = 14;
 const maxRegKeySum = 100;
 
@@ -33,13 +33,10 @@ const generateKey = function() {
 
 /**
  * Validate a key.
- * @param {string} key Key to validate.
+ * @param {Buffer} bytes Key to validate in buffer form.
  * @returns Whether the key is valid or not.
  */
-const validateKey = function(key) {
-    // get byte array
-    var bytes = Buffer.from(key, "hex");
-
+const validateKeyBuf = function(bytes) {
     let sum = 0;
     for (const [idx, val] of bytes.entries()) {
         if (idx >= regKeyLen) {
@@ -52,7 +49,19 @@ const validateKey = function(key) {
     return sum >= minRegKeySum && sum <= maxRegKeySum;
 }
 
+/**
+ * Validate a key.
+ * @param {string} key Key to validate.
+ * @returns Whether the key is valid or not.
+ */
+const validateKey = function(key) {
+    // get byte array
+    return validateKeyBuf(Buffer.from(key, "hex"));
+}
+
 module.exports = {
+    regKeyLen: regKeyLen,
     generateKey: generateKey,
-    validateKey: validateKey
+    validateKeyBuf: validateKeyBuf,
+    validateKey: validateKey,
 }

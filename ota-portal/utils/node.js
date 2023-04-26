@@ -2,11 +2,7 @@ const errors = require("./httperror");
 const rclient = require("./redis-client");
 const keys = require("./keys");
 
-const types = {
-    DEVICE: "device",
-    FOG: "fog",
-    CLOUD: "cloud"
-};
+const types = require("./ijam_types").node.types;
 
 const statuses = {
     CREATED: "created",
