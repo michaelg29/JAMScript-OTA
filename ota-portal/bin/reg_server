@@ -1,0 +1,58 @@
+#!/usr/bin/env node
+/**
+ * Server to grant ijam nodes registration.
+ */
+
+const fs = require("fs");
+const crypto = require("crypto");
+const ijam = require("../utils/ijam_types");
+
+const privKey = Buffer.from(fs.readFileSync("key_rsa.pem", {encoding: "utf-8"}));
+
+const net = require("net");
+const port = process.env.REG_SERVER_PORT;
+const server = net.createServer(onClientConnection);
+function onClientConnection(sock) {
+    //Log when a client connnects.
+    console.log(`${sock.remoteAddress}:${sock.remotePort} Connected`);
+
+	//Handle the client data.
+    sock.on('data', function(data) {
+        //Log data received from the client
+        var buf = Buffer.from(data);
+        console.log("Received", buf.byteLength, "bytes");
+        console.log("Current status", sock.status);
+        
+        // get message and decrypt
+        const decrypted = crypto.privateDecrypt({
+            key: privKey,
+            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+            oaepHash: "sha256"
+        }, buf);
+        console.log("Decrypted", decrypted.toString("hex"));
+        let req = ijam.parseRegisterRequest(decrypted);
+        console.log(req);
+
+        // return uuid as byte array
+        let uuid = req.nodeId == ijam.emptyUUID ? ijam.createUUID() : req.nodeId;
+        let array = new Uint8Array(16);
+        Buffer.from(uuid.replace(/-/g, ""), "hex").copy(array);
+        console.log("New node with UUID", uuid);
+        sock.write(array, "utf-8");
+        sock.end();
+	});
+    
+	//Handle when client connection is closed
+    sock.on('close',function(){
+        console.log(`${sock.remoteAddress}:${sock.remotePort} Connection closed`);
+    });
+    
+	//Handle Client connection error.
+    sock.on('error',function(error){
+        console.error(`${sock.remoteAddress}:${sock.remotePort} Connection Error ${error}`);
+    });
+}
+
+server.listen(port, 16, () => {
+    console.log("started", port);
+});

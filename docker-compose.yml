@@ -20,11 +20,15 @@ services:
     ports:
       - ${REDIS_PORT}:${REDIS_PORT}
       - ${PORTAL_PORT}:${PORTAL_PORT}
+      - ${CERT_SERVER_PORT}:${CERT_SERVER_PORT}
+      - ${REG_SERVER_PORT}:${REG_SERVER_PORT}
     expose:
       - ${PORTAL_PORT}
+      - ${CERT_SERVER_PORT}
+      - ${REG_SERVER_PORT}
     build:
       context: ./
       dockerfile: Dockerfile
-    entrypoint: ["${JAMOTA_ROOT}/start.sh", "-c", "-r", "${REDIS_MODE:-none}", "-p", "${PORTAL_MODE:-none}"]
+    entrypoint: ["${JAMOTA_ROOT}/start.sh", "-c"]
     networks:
       - ijam_default

@@ -4,9 +4,12 @@ ENV JAMOTA_ROOT=/home/admin/JAMOTA
 
 RUN apt-get update && \
     apt install -y -q wget \
-    sudo \
+    gcc \
+    libssl-dev \
+    make \
     redis-server \
     ssh \
+    sudo \
     zip
 
 RUN useradd -m admin && echo "admin:admin" | chpasswd && adduser admin sudo

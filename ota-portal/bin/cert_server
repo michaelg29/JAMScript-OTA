@@ -1,0 +1,53 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+
+const pubKeyFile = Buffer.from(fs.readFileSync("cert_rsa.pem", {encoding: "utf-8"}));;
+const pubKey = new Uint8Array(pubKeyFile.byteLength);
+pubKeyFile.copy(pubKey);
+
+const cert_req_magic = new Uint8Array([0x8c, 0x12, 0x4d, 0x3f]);
+
+const net = require("net");
+const port = process.env.CERT_SERVER_PORT;
+const server = net.createServer(onClientConnection);
+function onClientConnection(sock) {
+    //Log when a client connnects.
+    console.log(`${sock.remoteAddress}:${sock.remotePort} Connected`);
+
+	//Handle the client data.
+    sock.on('data', function(data) {
+        // verify magic number
+        if (!buf.byteLength == 4) {
+            sock.end();
+            return;
+        }
+        let array = new Uint8Array(4);
+        buf.copy(array);
+        if (array[0] !== cert_req_magic[0] ||
+            array[1] !== cert_req_magic[1] ||
+            array[2] !== cert_req_magic[2] ||
+            array[3] !== cert_req_magic[3]) {
+                sock.end();
+                return;
+        }
+
+        // send certificate file
+        sock.write(pubKey, "utf-8");
+        console.log("Sent", pubKey.length, "bytes");
+	});
+    
+	//Handle when client connection is closed
+    sock.on('close',function(){
+        console.log(`${sock.remoteAddress}:${sock.remotePort} Connection closed`);
+    });
+    
+	//Handle Client connection error.
+    sock.on('error',function(error){
+        console.error(`${sock.remoteAddress}:${sock.remotePort} Connection Error ${error}`);
+    });
+}
+
+server.listen(port, 16, () => {
+    console.log("started", port);
+});
