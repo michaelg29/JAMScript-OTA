@@ -42,13 +42,13 @@ async function filterNodeEntries(req, networkIds) {
             continue;
         }
 
-        let [network, networkKey] = await network.getNetwork(networkId);
+        let [networkObj, networkKey] = await network.getNetwork(networkId);
         let [err, nodeIds] = await rclient.getSetMembers(node.networkNodesKey(networkId));
 
         for (let nodeId of nodeIds) {
             [err, nodeObj] = await rclient.getObj(node.nodeKey(nodeId));
             if (nodeObj && applyFilter(nodeObj)) {
-                nodes[nodeId] = map(network, nodeObj);
+                nodes[nodeId] = map(networkObj, nodeObj);
             }
         }
     }

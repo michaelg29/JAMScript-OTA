@@ -1,4 +1,11 @@
 
+#ifndef IJAM_H
+#define IJAM_H
+
+typedef char bool;
+#define false (bool)0
+#define true !false
+
 /** UUID structure (16 bytes). */
 #define UUID_SIZE 16
 typedef struct {
@@ -13,7 +20,8 @@ typedef enum {
 } node_type_t;
 
 /** Standard length of the network registration key. */
-#define REG_KEY_LEN 20
+#define REG_KEY_LEN 32
+#define NODE_KEY_LEN 32 // aes-256-cbc
 
 /** Node registration request structure. */
 typedef struct {
@@ -21,6 +29,9 @@ typedef struct {
     uuid_t nodeId;
     uuid_t networkId;
     char networkRegKey[REG_KEY_LEN];
+    char nodeKey[NODE_KEY_LEN];
     node_type_t nodeType;
 } register_request_t;
 #define REGISTER_REQUEST_T_SIZE sizeof(register_request_t)
+
+#endif // IJAM_H

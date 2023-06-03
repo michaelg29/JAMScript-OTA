@@ -1,11 +1,13 @@
 
 const keys = require("./keys");
+const crypto = require("crypto");
 
 const node_types = {
     DEVICE: "device",
     FOG: "fog",
     CLOUD: "cloud"
 };
+const nodeKeyLen = 32; // AES-256-CBC
 
 const emptyUUID = "00000000-0000-0000-0000-000000000000";
 
@@ -42,14 +44,19 @@ const readUUID = function(bytes, delimeter = '-') {
  * @returns The request.
  */
 const parseRegisterRequest = function(buf) {
-    // length = magic (int) + nodeId (uuid) + networkId (uuid) + networkRegKey + node type (int)
-    let regReqLen = 4 + 16 + 16 + keys.regKeyLen + 4;
+    // length = magic (int) + nodeId (uuid) + networkId (uuid) + networkRegKey + nodeKey + node type (int)
+    let regReqLen = 4 + 16 + 16 + keys.regKeyLen + nodeKeyLen + 4;
     if (buf.byteLength != regReqLen) {
-        return "Invalid length";
+        console.log(buf.byteLength, regReqLen);
+        throw "Invalid length";
     }
 
+    // read magic
+    let cursor = 0;
+    let magic = buf.subarray(cursor, cursor + 4);
+
     // read nodeId
-    let cursor = 4;
+    cursor += 4;
     let nodeId = readUUID(buf.subarray(cursor, cursor + 16));
 
     // read networkId
@@ -60,8 +67,11 @@ const parseRegisterRequest = function(buf) {
     cursor += 16
     let networkRegKey = buf.subarray(cursor, cursor + keys.regKeyLen);
     if (!keys.validateKeyBuf(networkRegKey)) {
-        return "Invalid key.";
+        throw "Invalid key.";
     }
+
+    cursor += keys.regKeyLen;
+    let nodeKey = buf.subarray(cursor, cursor + nodeKeyLen);
 
     // read node type
     let nodeTypeInt = buf.readInt32LE(regReqLen - 4);
@@ -79,10 +89,11 @@ const parseRegisterRequest = function(buf) {
     }
 
     return {
-        magic: buf.readInt32LE(0),
+        magic: magic,
         nodeId: nodeId,
         networkId: networkId,
-        key: networkRegKey.toString("hex"),
+        networkRegKey: networkRegKey.toString("hex"),
+        nodeKey: nodeKey,
         nodeType: nodeType,
     };
 };

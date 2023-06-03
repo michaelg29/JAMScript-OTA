@@ -1,3 +1,4 @@
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <openssl/ossl_typ.h>
@@ -9,31 +10,47 @@
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/bn.h>
+#include <openssl/aes.h>
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "ijam.h"
+#include "ijam_util.h"
 
 #define CERT_REQ_MAGIC 0x3f4d128c
 #define BUF_SIZE 1024
 #define KEY_SIZE 800
 
+#define NETWORK_ID "42906910de7b452d94b8fe6d572c0f48"
+#define NETWORK_REG_KEY "a76ca6bab2f5c570d6eaccb05857aa0775f9cdd65cf9e8efedf717df41f4f2fe"
+#define NODE_TYPE device
+
 int sock;
 struct sockaddr_in echoServAddr;
-unsigned short echoServPort = 8444;
+unsigned short certServerPort = 8444;
+unsigned short regServerPort = 8445;
 char *servIP = "127.0.0.1";
 static unsigned char buffer[BUF_SIZE];
 static unsigned char err[BUF_SIZE];
 static unsigned char key[KEY_SIZE + 1];
 
 /** Kill the program. */
-void closeMsg(char *message)
-{
-    printf("%s\n", message);
+void closeMsg(const char *msg) {
+    if (msg) {
+        printf("%s\n", msg);
+    }
+    if (sock) {
+        close(sock);
+    }
     exit(0);
+}
+
+void kill() {
+    closeMsg(NULL);
 }
 
 /**
@@ -63,9 +80,14 @@ int encrypt(unsigned char *msg, int msg_len) {
 
 /** Send `buffer` to the socket. */
 int sendBuffer(int n) {
-    if (send(sock, buffer, n, 0) != n) {
-        closeMsg("Could not send buffer\n");
+    for (int i = 0; i < n; ++i) {
+        printf("%02x", buffer[i] & 0xff);
     }
+    if (send(sock, buffer, n, 0) != n) {
+        printf("Could not send %d bytes.\n", n);
+        kill();
+    }
+    printf("\n");
     return n;
 }
 
@@ -78,24 +100,13 @@ int receiveBuffer() {
 }
 
 int main(int argc, char *argv[]) {
-    char *echoString = "Hello, world!";
+    // ===============================
+    // === Retrieve RSA public key ===
+    // ===============================
 
-    // create socket
-    if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
-    {
-        closeMsg("socket() failed");
-    }
-
-    // construct address
-    memset(&echoServAddr, 0, sizeof(echoServAddr));
-    echoServAddr.sin_family = AF_INET;
-    echoServAddr.sin_addr.s_addr = inet_addr(servIP);
-    echoServAddr.sin_port = htons(echoServPort);
-
-    // connect
-    if (connect(sock, (struct sockaddr *)&echoServAddr, sizeof(echoServAddr)) < 0)
-    {
-        closeMsg("connect() failed");
+    // connect to certificate server
+    if ((sock = connectToListener(servIP, certServerPort)) < 0) {
+        closeMsg("Could not connect to certificate server");
     }
 
     // send hello
@@ -108,20 +119,40 @@ int main(int argc, char *argv[]) {
        closeMsg("Incorrect key response.");
     }
     memcpy(key, buffer, KEY_SIZE);
-    printf("%d\n%s\n", recvBytes, buffer);
     key[KEY_SIZE] = 0;
 
-    // send encrypted message (512 bytes)
-    register_request_t node = {
-        1234,
-        {{ 0xfa, 0x9e, 0x7d, 0x38, 0x6c, 0xf1, 0x41, 0x8f, 0x85, 0x91, 0xa0, 0x8a, 0x57, 0x9c, 0xd8, 0x8d }},
-        {{ 0xc2, 0x50, 0x1f, 0x96, 0x18, 0x6c, 0x4a, 0x9e, 0x99, 0xb0, 0x59, 0xc7, 0xe3, 0x31, 0x82, 0x0d }},
-        { 0x4a, 0xc8, 0xd3, 0x9b, 0x6a, 0x24, 0x1c, 0xcb, 0x48, 0xb8, 0x7f, 0xfa, 0xd0, 0xf4, 0xf6, 0xf8, 0xf4, 0xf6, 0x23, 0xf2 },
-        device
-    };
+    close(sock);
+
+    // =====================
+    // === Register node ===
+    // =====================
+
+    // connect to registration server
+    if ((sock = connectToListener(servIP, regServerPort)) < 0) {
+        closeMsg("Could not connect to registration server");
+    }
+
+    // generate encryption IV
+    srand(time(0));
+    int encIV = rand();
+
+    // construct request
+    register_request_t node;
+    node.magic = encIV;
+    memset(node.nodeId.bytes, 0, UUID_SIZE);
+    parseHex(NETWORK_ID, UUID_SIZE, node.networkId.bytes);
+    parseHex(NETWORK_REG_KEY, REG_KEY_LEN, node.networkRegKey);
+    node.nodeType = NODE_TYPE;
+
+    // generate random node key
+    for (int i = 0; i < NODE_KEY_LEN; ++i) {
+        node.nodeKey[i] = rand() & 0xFF;
+    }
+
+    // encrypt and send
     unsigned char buf[REGISTER_REQUEST_T_SIZE];
     memcpy(buf, &node, REGISTER_REQUEST_T_SIZE);
-    printf("Sending: ");
+    printf("Sending (%ld): ", REGISTER_REQUEST_T_SIZE);
     for (int i = 0; i < REGISTER_REQUEST_T_SIZE; ++i) {
         printf("%02x", buf[i] & 0xff);
     }
@@ -129,23 +160,49 @@ int main(int argc, char *argv[]) {
     int encLen = encrypt(buf, REGISTER_REQUEST_T_SIZE);
     sendBuffer(encLen);
 
-    // receive UUID
+    // receive encrypted buffer
     recvBytes = receiveBuffer();
-    if (recvBytes < UUID_SIZE) {
-        closeMsg("Incorrect GUID response.");
+    close(sock);
+
+    // ========================
+    // === Process response ===
+    // ========================
+
+    if (!recvBytes) {
+        closeMsg("Nothing received\n");
     }
-    uuid_t *uuid = (uuid_t*)buffer;
-    for (int i = 0; i < UUID_SIZE; ++i) {
-        printf("%02X", uuid->bytes[i]);
-        if (i == 3 || i == 5 || i == 7 || i == 9) {
-            printf("-");
-        }
+
+    printf("\n");
+    for (int i = 0; i < recvBytes; ++i) {
+        printf("%02x", buffer[i] & 0xff);
     }
     printf("\n");
 
-    closeMsg("Connection closed");
+    // read status
+    short status = *((short*)buffer);
+    printf("Status: %d\n", status);
+    if (status != 200) {
+        printf("Error: %s\n", buffer + 2);
+        kill();
+    }
+
+    // decrypt
+    printf("Decrypted %d bytes.\n", aes_decrypt(buffer + 2, recvBytes - 2, buf, REGISTER_REQUEST_T_SIZE, node.nodeKey));
+    for (int i = 0; i < recvBytes - 2; ++i) {
+        printf("%02x", buf[i] & 0xff);
+    }
+
+    // check magic
+    int retMagic = *((int*)(buf + 16));
+    printf("Magic: expected %08x, received %08x\n", node.magic, retMagic);
+    if (retMagic != node.magic) {
+        closeMsg("Mismatched magic.");
+    }
+
+    // save UUID
+    uuid_t uuid = *((uuid_t*)(buf + 16 + 4));
+    printUUID(uuid);
 
     // close
-    printf("\n");
-    close(sock);
+    closeMsg("Connection closed.");
 }

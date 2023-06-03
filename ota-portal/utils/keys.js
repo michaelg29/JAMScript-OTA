@@ -2,7 +2,7 @@
  * Utility functions for key generation and validation.
  */
 
-const regKeyLen = 20;
+const regKeyLen = 32;
 const minRegKeySum = 14;
 const maxRegKeySum = 100;
 

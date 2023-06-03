@@ -6,8 +6,8 @@ CFLAGS=-g -lssl -lcrypto
 %.o: %.c
 	gcc -c $< $(CFLAGS)
 
-ijamreg: ijamreg.o
-	gcc ijamreg.o $(CFLAGS) -o a.o
+ijamreg: ijamreg.o ijam_util.o
+	gcc ijamreg.o ijam_util.o $(CFLAGS) -o a.o
 
 run:
 	exec ./a.o

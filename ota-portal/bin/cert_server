@@ -17,17 +17,23 @@ function onClientConnection(sock) {
 
 	//Handle the client data.
     sock.on('data', function(data) {
+        var buf = Buffer.from(data);
+        console.log("Received", buf.byteLength, "bytes");
+
         // verify magic number
         if (!buf.byteLength == 4) {
+            console.log("Invalid magic:", buf.toString("hex"));
             sock.end();
             return;
         }
+
         let array = new Uint8Array(4);
         buf.copy(array);
         if (array[0] !== cert_req_magic[0] ||
             array[1] !== cert_req_magic[1] ||
             array[2] !== cert_req_magic[2] ||
             array[3] !== cert_req_magic[3]) {
+                console.log("Invalid magic:", buf.toString("hex"));
                 sock.end();
                 return;
         }
