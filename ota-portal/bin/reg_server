@@ -3,12 +3,13 @@
  * Server to grant ijam nodes registration.
  */
 
-const fs = require("fs");
 const crypto = require("crypto");
-const ijam = require("../utils/ijam_types");
-const node = require("./../utils/node");
-const network = require("./../utils/network");
 const errors = require("./../utils/httperror");
+const fs = require("fs");
+const ijam = require("../utils/ijam_types");
+const network = require("./../utils/network");
+const node = require("./../utils/node");
+const tcp = require("../utils/tcp");
 
 const privKey = Buffer.from(fs.readFileSync("key_rsa.pem", {encoding: "utf-8"}));
 
@@ -42,104 +43,78 @@ function sendResponse(status, ...data) {
     return array;
 }
 
-const net = require("net");
-const port = process.env.REG_SERVER_PORT;
-const server = net.createServer(onClientConnection);
-function onClientConnection(sock) {
-    //Log when a client connnects.
-    console.log(`${sock.remoteAddress}:${sock.remotePort} Connected`);
+const server = tcp.startServer(process.env.REG_SERVER_PORT, (data) => {
+    try {
+        var buf = Buffer.from(data);
+        console.log("Received", buf.byteLength, "bytes");
 
-	//Handle the client data.
-    sock.on('data', function(data) {
+        // get message and decrypt
+        const decrypted = crypto.privateDecrypt({
+            key: privKey,
+            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+            oaepHash: "sha1"
+        }, buf);
+
+        console.log("decrypted", decrypted.byteLength, "bytes");
+
+        let req;
         try {
-            var buf = Buffer.from(data);
-            console.log("Received", buf.byteLength, "bytes");
-
-            // get message and decrypt
-            const decrypted = crypto.privateDecrypt({
-                key: privKey,
-                padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-                oaepHash: "sha1"
-            }, buf);
-
-            console.log("decrypted", decrypted.byteLength, "bytes");
-
-            let req;
-            try {
-                req = ijam.parseRegisterRequest(decrypted);
-            } catch (error) {
-                console.log("request", error);
-                errors.error(400, "request");
-            }
-
-            // validate network registration
-            let err = undefined;
-            network.getNetwork(req.networkId)
-                .then(([networkObj, _]) => {
-                    if (!networkObj) {
-                        errors.error(404, "network");
-                    }
-
-                    if (networkObj.regKey !== req.networkRegKey) {
-                        errors.error(401, "regkey");
-                    }
-                    let username = networkObj.username;
-
-                    // create node entry
-                    let uuid = req.nodeId == ijam.emptyUUID ? ijam.createUUID() : req.nodeId;
-                    node.obj.create(uuid, req.networkId, username, "node", req.nodeType, "", req.nodeKey.toString("hex"))
-                        .then(() => {
-                            console.log("New node with UUID", uuid);
-
-                            // TODO: add to network list
-
-                            // generate IV for encryption
-                            let iv = crypto.randomBytes(16);
-
-                            // encrypt the magic and UUID together
-                            let alg = crypto.createCipheriv("aes-256-cbc", req.nodeKey, iv);
-                            let enc = alg.update(req.magic, "utf-8", "hex");
-                            enc += alg.update(Buffer.from(uuid.replace(/-/g, ""), "hex"), "utf-8", "hex");
-                            enc += alg.final("hex");
-
-                            // send success response
-                            let array = sendResponse(200, iv, Buffer.from(enc, "hex"));
-                            console.log("Sending", array.length, "bytes");
-                            sock.write(array, "utf-8");
-                        })
-                        .catch((error) => {
-                            console.log(error);
-                            errors.error(500, "Could not post");
-                        });
-                })
-                .catch((error) => {
-                    err = error;
-                });
-
-            if (err) {
-                throw err;
-            }
+            req = ijam.parseRegisterRequest(decrypted);
         } catch (error) {
-            // send error response
-            console.log(error.statusCode, error.message);
-            sendResponse(sock, error.statusCode || 500, Buffer.from(error.message));
-        } finally {
-            // close the client
-            //sock.end();
+            console.log("request", error);
+            errors.error(400, "request");
         }
-	});
-    
-	//Handle when client connection is closed
-    sock.on('close',function(){
-        console.log(`${sock.remoteAddress}:${sock.remotePort} Connection closed`);
-    });
-    
-	//Handle Client connection error.
-    sock.on('error',function(error){
-        console.error(`${sock.remoteAddress}:${sock.remotePort} Connection Error ${error}`);
-    });
-}
 
-server.listen(port, 16, () => {
-    console.log("started", port);
+        // validate network registration
+        let err = undefined;
+        network.getNetwork(req.networkId)
+            .then(([networkObj, _]) => {
+                if (!networkObj) {
+                    errors.error(404, "network");
+                }
+
+                if (networkObj.regKey !== req.networkRegKey) {
+                    errors.error(401, "regkey");
+                }
+                let username = networkObj.username;
+
+                // create node entry
+                let uuid = req.nodeId == ijam.emptyUUID ? ijam.createUUID() : req.nodeId;
+                node.obj.create(uuid, req.networkId, username, "node", req.nodeType, "", req.nodeKey.toString("hex"))
+                    .then(() => {
+                        console.log("New node with UUID", uuid);
+
+                        // TODO: add to network list
+
+                        // generate IV for encryption
+                        let iv = crypto.randomBytes(16);
+
+                        // encrypt the magic and UUID together
+                        let alg = crypto.createCipheriv("aes-256-cbc", req.nodeKey, iv);
+                        let enc = alg.update(req.magic, "utf-8", "hex");
+                        enc += alg.update(Buffer.from(uuid.replace(/-/g, ""), "hex"), "utf-8", "hex");
+                        enc += alg.final("hex");
+
+                        // send success response
+                        let array = sendResponse(200, iv, Buffer.from(enc, "hex"));
+                        console.log("Sending", array.length, "bytes");
+                        sock.write(array, "utf-8");
+                    })
+                    .catch((error) => {
+                        console.log(error);
+                        errors.error(500, "Could not post");
+                    });
+            })
+            .catch((error) => {
+                err = error;
+            });
+
+        if (err) {
+            throw err;
+        }
+    } catch (error) {
+        // send error response
+        console.log(error.statusCode, error.message);
+        sendResponse(sock, error.statusCode || 500, Buffer.from(error.message));
+    }
 });

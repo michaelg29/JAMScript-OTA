@@ -81,86 +81,76 @@ int connectToListener(const char *ip, short port) {
     return sock;
 }
 
-/**
- * Encrypt with AES-256-CBC.
- * @param in The input bytes, with the first 16 bytes being the IV.
- * @param len The length of the input data with the IV.
- * @param out The output buffer.
- * @param maxOutLen The allocated length of the output buffer.
- * @param iv The initialization vector.
- * @param key The encryption key (32 bytes).
- * @return The length of the encrypted message.
- */
-int aes_encrypt(unsigned char *in, int len, unsigned char *out, int maxOutLen, unsigned char *key) {
-    AES_KEY aesKey;
+int aes_encrypt(unsigned char *plaintext, int len, unsigned char *enc, int maxOutLen, unsigned char *key) {
+    // pad length to allow for a complete final block
+    int paddedLength = len + (len % 16 ? 16 - (len % 16) : 0);
 
-    if (len <= 16) return 0;
+    // validate input and output sizes
+    if (len <= 0 || paddedLength > maxOutLen) return 0;
 
     // initialize key structure
+    AES_KEY aesKey;
     if (AES_set_encrypt_key(key, 256, &aesKey)) {
         return -1;
     }
 
+#ifdef IJAM_DEBUG
     printf("\nIV:\n");
     for (int i = 0; i < 16; ++i) {
-        printf("%02x", in[i] & 0xff);
+        printf("%02x", plaintext[i] & 0xff);
     }
 
     printf("\nPlaintext:\n");
     for (int i = 16; i < len; ++i) {
-        printf("%02x", in[i] & 0xff);
+        printf("%02x", plaintext[i] & 0xff);
     }
+#endif
 
-    AES_cbc_encrypt(in, out, (size_t)len, &aesKey, in, AES_ENCRYPT);
+    // encrypt
+    AES_cbc_encrypt(plaintext, enc, (size_t)len, &aesKey, plaintext, AES_ENCRYPT);
 
+#ifdef IJAM_DEBUG
     printf("\nCiphertext:\n");
     for (int i = 0; i < len; ++i) {
-        printf("%02x", out[i] & 0xff);
+        printf("%02x", enc[i] & 0xff);
     }
-
     printf("\n");
+#endif
 
     return len;
 }
 
-/**
- * Decrypt with AES-256-CBC.
- * @param in The encrypted bytes, with the first 16 bytes being the IV.
- * @param len The length of the encrypted data with the IV.
- * @param out The output buffer.
- * @param maxOutLen The allocated length of the output buffer.
- * @param iv The initialization vector.
- * @param key The encryption key (32 bytes).
- * @return The length of the decrypted message.
- */
-int aes_decrypt(unsigned char *in, int len, unsigned char *out, int maxOutLen, unsigned char *key) {
-    AES_KEY aesKey;
-
-    if (!len) return 0;
+int aes_decrypt(unsigned char *enc, int len, unsigned char *dec, int maxOutLen, unsigned char *key) {
+    // validate input length
+    if (len <= 0 || len % 16 || len > maxOutLen) return 0;
 
     // initialize key structure
+    AES_KEY aesKey;
     if (AES_set_decrypt_key(key, 256, &aesKey)) {
         return -1;
     }
 
+#ifdef IJAM_DEBUG
     printf("\nIV:\n");
     for (int i = 0; i < 16; ++i) {
-        printf("%02x", in[i] & 0xff);
+        printf("%02x", enc[i] & 0xff);
     }
 
     printf("\nCiphertext:\n");
     for (int i = 16; i < len; ++i) {
-        printf("%02x", in[i] & 0xff);
+        printf("%02x", enc[i] & 0xff);
     }
+#endif
 
-    AES_cbc_encrypt(in, out, (size_t)len, &aesKey, in, AES_DECRYPT);
+    AES_cbc_encrypt(enc, dec, (size_t)len, &aesKey, enc, AES_DECRYPT);
 
+#ifdef IJAM_DEBUG
     printf("\nPlaintext:\n");
     for (int i = 0; i < len; ++i) {
-        printf("%02x", out[i] & 0xff);
+        printf("%02x", dec[i] & 0xff);
     }
-
     printf("\n");
+#endif
 
     return len;
 }

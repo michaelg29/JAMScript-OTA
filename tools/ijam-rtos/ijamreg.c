@@ -1,6 +1,15 @@
+/**
+ * Registration program for JAMScript nodes.
+ */
 
+/** Standard includes. */
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <time.h>
+
+/** OpenSSL includes. */
 #include <openssl/ossl_typ.h>
 #include <openssl/rsa.h>
 #include <openssl/bio.h>
@@ -12,33 +21,26 @@
 #include <openssl/bn.h>
 #include <openssl/aes.h>
 
+/** Socket includes. */
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <string.h>
-#include <unistd.h>
-#include <time.h>
 
+/** IJAM includes. */
 #include "ijam.h"
 #include "ijam_util.h"
+#include "node_params.h"
 
-#define CERT_REQ_MAGIC 0x8c124d3f
 #define BUF_SIZE 1024
 #define KEY_SIZE 800
 
-#define NETWORK_ID "42906910de7b452d94b8fe6d572c0f48"
-#define NETWORK_REG_KEY "a76ca6bab2f5c570d6eaccb05857aa0775f9cdd65cf9e8efedf717df41f4f2fe"
-#define NODE_TYPE device
-
 int sock;
 struct sockaddr_in echoServAddr;
-unsigned short certServerPort = 8444;
-unsigned short regServerPort = 8445;
-char *servIP = "127.0.0.1";
+
 static unsigned char buffer[BUF_SIZE];
 static unsigned char err[BUF_SIZE];
 static unsigned char key[KEY_SIZE + 1];
 
-/** Kill the program. */
+/** Kill the program with a message. */
 void closeMsg(const char *msg) {
     if (msg) {
         printf("%s\n", msg);
@@ -49,6 +51,7 @@ void closeMsg(const char *msg) {
     exit(0);
 }
 
+/** Kill the program. */
 void kill() {
     closeMsg(NULL);
 }
@@ -56,9 +59,9 @@ void kill() {
 /**
  * Encrypt message using RSA. The public encryption key
  * should already be in `key`. The output encrypted
- * message will be written to `buffer`.
+ * message will be written to `out`.
  */
-int encrypt(unsigned char *msg, int msg_len) {
+int rsa_encrypt(unsigned char *msg, int msg_len, unsigned char *out) {
     // initialize context
     RSA *rsa = NULL;
     BIO *keyBio = NULL;
@@ -68,7 +71,7 @@ int encrypt(unsigned char *msg, int msg_len) {
     // encrypt
     int res = 0;
     if (rsa) {
-        res = RSA_public_encrypt((int)msg_len, msg, buffer, rsa, RSA_PKCS1_OAEP_PADDING);
+        res = RSA_public_encrypt((int)msg_len, msg, out, rsa, RSA_PKCS1_OAEP_PADDING);
     }
 
     // print error
@@ -105,7 +108,7 @@ int main(int argc, char *argv[]) {
     // ===============================
 
     // connect to certificate server
-    if ((sock = connectToListener(servIP, certServerPort)) < 0) {
+    if ((sock = connectToListener(OTA_IP, OTA_CERT_PORT)) < 0) {
         closeMsg("Could not connect to certificate server");
     }
 
@@ -128,7 +131,7 @@ int main(int argc, char *argv[]) {
     // =====================
 
     // connect to registration server
-    if ((sock = connectToListener(servIP, regServerPort)) < 0) {
+    if ((sock = connectToListener(OTA_IP, OTA_REG_PORT)) < 0) {
         closeMsg("Could not connect to registration server");
     }
 
@@ -150,14 +153,14 @@ int main(int argc, char *argv[]) {
     }
 
     // encrypt and send
-    unsigned char buf[REGISTER_REQUEST_T_SIZE];
-    memcpy(buf, &node, REGISTER_REQUEST_T_SIZE);
+    unsigned char node_buf[REGISTER_REQUEST_T_SIZE];
+    memcpy(node_buf, &node, REGISTER_REQUEST_T_SIZE);
     printf("Sending (%ld): ", REGISTER_REQUEST_T_SIZE);
     for (int i = 0; i < REGISTER_REQUEST_T_SIZE; ++i) {
-        printf("%02x", buf[i] & 0xff);
+        printf("%02x", node_buf[i] & 0xff);
     }
     printf("\n");
-    int encLen = encrypt(buf, REGISTER_REQUEST_T_SIZE);
+    int encLen = rsa_encrypt(node_buf, REGISTER_REQUEST_T_SIZE, buffer);
     sendBuffer(encLen);
 
     // receive encrypted buffer
@@ -172,35 +175,45 @@ int main(int argc, char *argv[]) {
         closeMsg("Nothing received\n");
     }
 
+#ifdef IJAM_DEBUG
     printf("\n");
     for (int i = 0; i < recvBytes; ++i) {
         printf("%02x", buffer[i] & 0xff);
     }
     printf("\n");
+#endif
+
+    int cursor = 0;
 
     // read status
-    short status = *((short*)buffer);
+    short status = *((short*)buffer + cursor);
+    cursor += 2;
     printf("Status: %d\n", status);
     if (status != 200) {
-        printf("Error: %s\n", buffer + 2);
+        printf("Error: %s\n", buffer + cursor);
         kill();
     }
 
     // decrypt
-    printf("Decrypted %d bytes.\n", aes_decrypt(buffer + 2, recvBytes - 2, buf, REGISTER_REQUEST_T_SIZE, node.nodeKey));
-    for (int i = 0; i < recvBytes - 2; ++i) {
-        printf("%02x", buf[i] & 0xff);
+    unsigned char *dec = err; // re-name error buffer
+    int decBytes = aes_decrypt(buffer + cursor, recvBytes - cursor, dec, BUF_SIZE, node.nodeKey);
+    printf("Decrypted %d bytes.\n", decBytes);
+    for (int i = 0; i < decBytes; ++i) {
+        printf("%02x", dec[i] & 0xff);
     }
 
     // check magic
-    int retMagic = *((int*)(buf + 16));
+    cursor = 16; // skip IV
+    int retMagic = *((int*)(dec + cursor));
+    cursor += 4;
     printf("Magic: expected %08x, received %08x\n", node.magic, retMagic);
     if (retMagic != node.magic) {
         closeMsg("Mismatched magic.");
     }
 
     // save UUID
-    uuid_t uuid = *((uuid_t*)(buf + 16 + 4));
+    uuid_t uuid = *((uuid_t*)(dec + cursor));
+    cursor += 16;
     printUUID(uuid);
 
     // close

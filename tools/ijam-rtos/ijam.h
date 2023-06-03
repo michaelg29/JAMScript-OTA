@@ -1,7 +1,18 @@
 
-#ifndef IJAM_H
-#define IJAM_H
+#ifndef __IJAM_H
+#define __IJAM_H
 
+#define IJAM_DEBUG 1 // comment out to silence most printf statements
+
+/** Magic value to send to the certificate server for validation. */
+#define CERT_REQ_MAGIC 0x8c124d3f
+
+/** Listener addresses and ports. */
+#define OTA_IP "127.0.0.1"
+#define OTA_CERT_PORT 8444
+#define OTA_REG_PORT 8445
+
+/** Boolean. */
 typedef char bool;
 #define false (bool)0
 #define true !false
@@ -34,4 +45,4 @@ typedef struct {
 } register_request_t;
 #define REGISTER_REQUEST_T_SIZE sizeof(register_request_t)
 
-#endif // IJAM_H
+#endif // __IJAM_H

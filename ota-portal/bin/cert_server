@@ -1,54 +1,30 @@
 #!/usr/bin/env node
+/**
+ * Server to give unregistered nodes the public RSA key.
+ */
 
 const fs = require("fs");
+const tcp = require("../utils/tcp");
 
 const pubKeyFile = Buffer.from(fs.readFileSync(process.env.RSA_CERT_PATH, {encoding: "utf-8"}));
 const pubKey = new Uint8Array(pubKeyFile.byteLength);
 pubKeyFile.copy(pubKey);
 
-const cert_req_magic = 0x8c124d3f;
+// validation of key request.
+const certReqMagic = 0x8c124d3f;
 
-const net = require("net");
-const port = process.env.CERT_SERVER_PORT;
-const server = net.createServer(onClientConnection);
-function onClientConnection(sock) {
-    //Log when a client connnects.
-    console.log(`${sock.remoteAddress}:${sock.remotePort} Connected`);
+const server = tcp.startServer(process.env.CERT_SERVER_PORT, (data) => {
+    var buf = Buffer.from(data);
+    console.log("Received", buf.byteLength, "bytes");
 
-	//Handle the client data.
-    sock.on('data', function(data) {
-        var buf = Buffer.from(data);
-        console.log("Received", buf.byteLength, "bytes");
+    // verify magic number
+    if (!(buf && buf.byteLength == 4 && buf.readInt32LE(0) == certReqMagic)) {
+        console.log("Invalid magic:", buf.toString("hex"));
+        sock.end();
+        return;
+    }
 
-        // verify magic number
-        if (!buf.byteLength == 4) {
-            console.log("Invalid magic:", buf.toString("hex"));
-            sock.end();
-            return;
-        }
-
-        if (buf.readInt32LE(0) != cert_req_magic) {
-            console.log("Invalid magic:", buf.toString("hex"));
-            sock.end();
-            return;
-        }
-
-        // send certificate file
-        sock.write(pubKey, "utf-8");
-        console.log("Sent", pubKey.length, "bytes");
-	});
-    
-	//Handle when client connection is closed
-    sock.on('close',function(){
-        console.log(`${sock.remoteAddress}:${sock.remotePort} Connection closed`);
-    });
-    
-	//Handle Client connection error.
-    sock.on('error',function(error){
-        console.error(`${sock.remoteAddress}:${sock.remotePort} Connection Error ${error}`);
-    });
-}
-
-server.listen(port, 16, () => {
-    console.log("started", port);
+    // send certificate file
+    sock.write(pubKey, "utf-8");
+    console.log("Sent", pubKey.length, "bytes");
 });
