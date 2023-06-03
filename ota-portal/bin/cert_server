@@ -2,11 +2,11 @@
 
 const fs = require("fs");
 
-const pubKeyFile = Buffer.from(fs.readFileSync("cert_rsa.pem", {encoding: "utf-8"}));;
+const pubKeyFile = Buffer.from(fs.readFileSync(process.env.RSA_CERT_PATH, {encoding: "utf-8"}));
 const pubKey = new Uint8Array(pubKeyFile.byteLength);
 pubKeyFile.copy(pubKey);
 
-const cert_req_magic = new Uint8Array([0x8c, 0x12, 0x4d, 0x3f]);
+const cert_req_magic = 0x8c124d3f;
 
 const net = require("net");
 const port = process.env.CERT_SERVER_PORT;
@@ -27,15 +27,10 @@ function onClientConnection(sock) {
             return;
         }
 
-        let array = new Uint8Array(4);
-        buf.copy(array);
-        if (array[0] !== cert_req_magic[0] ||
-            array[1] !== cert_req_magic[1] ||
-            array[2] !== cert_req_magic[2] ||
-            array[3] !== cert_req_magic[3]) {
-                console.log("Invalid magic:", buf.toString("hex"));
-                sock.end();
-                return;
+        if (buf.readInt32LE(0) != cert_req_magic) {
+            console.log("Invalid magic:", buf.toString("hex"));
+            sock.end();
+            return;
         }
 
         // send certificate file

@@ -21,7 +21,7 @@
 #include "ijam.h"
 #include "ijam_util.h"
 
-#define CERT_REQ_MAGIC 0x3f4d128c
+#define CERT_REQ_MAGIC 0x8c124d3f
 #define BUF_SIZE 1024
 #define KEY_SIZE 800
 
