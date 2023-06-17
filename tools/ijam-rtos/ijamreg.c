@@ -137,15 +137,18 @@ int main(int argc, char *argv[]) {
 
     // generate encryption IV
     srand(time(0));
-    int encIV = rand();
 
-    // construct request
+    // try to read existing node information
     register_request_t node;
-    node.magic = encIV;
-    memset(node.nodeId.bytes, 0, UUID_SIZE);
-    parseHex(NETWORK_ID, UUID_SIZE, node.networkId.bytes);
-    parseHex(NETWORK_REG_KEY, REG_KEY_LEN, node.networkRegKey);
-    node.nodeType = NODE_TYPE;
+    int bytes_read = read_reg_info(&node);
+    if (!bytes_read) {
+        // initialize node information
+        node.magic = rand();
+        memset(node.nodeId.bytes, 0, UUID_SIZE);
+        parseHex(NETWORK_ID, UUID_SIZE, node.networkId.bytes);
+        parseHex(NETWORK_REG_KEY, REG_KEY_LEN, node.networkRegKey);
+        node.nodeType = NODE_TYPE;
+    }
 
     // generate random node key
     for (int i = 0; i < NODE_KEY_LEN; ++i) {
@@ -155,7 +158,7 @@ int main(int argc, char *argv[]) {
     // encrypt and send
     unsigned char node_buf[REGISTER_REQUEST_T_SIZE];
     memcpy(node_buf, &node, REGISTER_REQUEST_T_SIZE);
-    printf("Sending (%ld): ", REGISTER_REQUEST_T_SIZE);
+    printf("Sending (%d): ", REGISTER_REQUEST_T_SIZE);
     for (int i = 0; i < REGISTER_REQUEST_T_SIZE; ++i) {
         printf("%02x", node_buf[i] & 0xff);
     }
@@ -211,10 +214,11 @@ int main(int argc, char *argv[]) {
         closeMsg("Mismatched magic.");
     }
 
-    // save UUID
-    uuid_t uuid = *((uuid_t*)(dec + cursor));
+    // save node information
+    memcpy(node.nodeId.bytes, dec + cursor, UUID_SIZE);
     cursor += 16;
-    printUUID(uuid);
+    printUUID(node.nodeId);
+    save_reg_info(&node);
 
     // close
     closeMsg("Connection closed.");

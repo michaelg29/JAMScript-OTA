@@ -1,13 +1,17 @@
 
 #include "ijam_util.h"
 
-#include <sys/socket.h>
-#include <arpa/inet.h>
+/** Standard includes. */
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
+/** OpenSSL includes. */
 #include <openssl/aes.h>
-#include <stdio.h>
+
+/** Socket includes. */
+#include <sys/socket.h>
+#include <arpa/inet.h>
 
 void printUUID(uuid_t uuid) {
     for (int i = 0; i < UUID_SIZE; ++i) {
@@ -153,4 +157,46 @@ int aes_decrypt(unsigned char *enc, int len, unsigned char *dec, int maxOutLen, 
 #endif
 
     return len;
+}
+
+unsigned int calc_checksum(register_request_t *reg_info) {
+    unsigned int *buf = (int*)reg_info;
+    unsigned int checksum = 0;
+    for (int i = 0; i < (REGISTER_REQUEST_T_SIZE >> 2) - 1; ++i) {
+        checksum ^= buf[i];
+    }
+    return checksum;
+}
+
+int save_reg_info(register_request_t *reg_info) {
+    int n = 0;
+    FILE *fp = fopen(".env", "wb");
+    if (fp) {
+        reg_info->checksum = calc_checksum(reg_info);
+
+        n = fwrite(reg_info, 1, REGISTER_REQUEST_T_SIZE, fp);
+
+        fclose(fp);
+    }
+
+    return n;
+}
+
+int read_reg_info(register_request_t *reg_info) {
+    int n = 0;
+    FILE *fp = fopen(".env", "rb");
+    if (fp) {
+        n = fread(reg_info, 1, REGISTER_REQUEST_T_SIZE, fp);
+
+        // If data not read or checksum not valid, clear memory
+        if (!(n == REGISTER_REQUEST_T_SIZE &&
+            calc_checksum(reg_info) == reg_info->checksum)) {
+            n = 0;
+            memset(reg_info, 0, REGISTER_REQUEST_T_SIZE);
+        }
+
+        fclose(fp);
+    }
+
+    return n;
 }

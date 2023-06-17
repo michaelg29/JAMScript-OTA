@@ -10,7 +10,7 @@ const net = require("net");
  * @param {(sock: net.Socket)} sockCloseCallback Function to call when the client closes the connection.
  * @returns {net.Server} The server object.
  */
-const startServer = function(port, dataCallback, sockDataCallback = undefined, sockConnectCallback = undefined, sockCloseCallback = undefined) {
+const startServer = function(port, dataCallback = undefined, sockDataCallback = undefined, sockConnectCallback = undefined, sockCloseCallback = undefined) {
     const server = net.createServer((sock) => {
         // Log when a client connnects.
         console.log(`${sock.remoteAddress}:${sock.remotePort} Connected`);
@@ -40,7 +40,7 @@ const startServer = function(port, dataCallback, sockDataCallback = undefined, s
         });
     });
     
-    server.listen(process.env.CERT_SERVER_PORT, 16, () => {
+    server.listen(port, 16, () => {
         console.log("started", port);
     });
 

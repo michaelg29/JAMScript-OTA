@@ -1,0 +1,21 @@
+#!/usr/bin/env node
+/**
+ * Tool to delete node entries in Redis.
+ */
+
+const rclient = require("./../utils/redis-client");
+
+rclient.execute("keys", ["node:*"])
+    .then(async ([err, res]) => {
+        if (!res || err) {
+            console.log("Error finding keys.");
+        }
+        else {
+            for (var nodeKey of res) {
+                await rclient.del(nodeKey);
+                console.log("Deleted", nodeKey);
+            }
+        }
+        console.log("Done");
+        process.exit(0);
+    });

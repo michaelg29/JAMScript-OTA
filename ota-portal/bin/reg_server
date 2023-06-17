@@ -11,7 +11,7 @@ const network = require("./../utils/network");
 const node = require("./../utils/node");
 const tcp = require("../utils/tcp");
 
-const privKey = Buffer.from(fs.readFileSync("key_rsa.pem", {encoding: "utf-8"}));
+const privKey = Buffer.from(fs.readFileSync(process.env.RSA_PKEY_PATH, {encoding: "utf-8"}));
 
 /**
  * Send a registration response to the client.
@@ -43,7 +43,7 @@ function sendResponse(status, ...data) {
     return array;
 }
 
-const server = tcp.startServer(process.env.REG_SERVER_PORT, (data) => {
+const server = tcp.startServer(process.env.REG_SERVER_PORT, undefined, (sock, data) => {
     try {
         var buf = Buffer.from(data);
         console.log("Received", buf.byteLength, "bytes");

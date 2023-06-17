@@ -36,13 +36,14 @@ typedef enum {
 
 /** Node registration request structure. */
 typedef struct {
-    int magic;
-    uuid_t nodeId;
-    uuid_t networkId;
-    char networkRegKey[REG_KEY_LEN];
-    char nodeKey[NODE_KEY_LEN];
-    node_type_t nodeType;
+    int magic;                          // Random generated magic number.
+    uuid_t nodeId;                      // The node uuid.
+    uuid_t networkId;                   // The network uuid.
+    char networkRegKey[REG_KEY_LEN];    // The registration key for the network.
+    char nodeKey[NODE_KEY_LEN];         // The node encryption key.
+    node_type_t nodeType;               // The node type.
+    unsigned int checksum;              // Checksum to validate persisted data.
 } register_request_t;
-#define REGISTER_REQUEST_T_SIZE sizeof(register_request_t)
+#define REGISTER_REQUEST_T_SIZE (int)sizeof(register_request_t)
 
 #endif // __IJAM_H

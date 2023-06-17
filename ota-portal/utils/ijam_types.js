@@ -44,8 +44,8 @@ const readUUID = function(bytes, delimeter = '-') {
  * @returns The request.
  */
 const parseRegisterRequest = function(buf) {
-    // length = magic (int) + nodeId (uuid) + networkId (uuid) + networkRegKey + nodeKey + node type (int)
-    let regReqLen = 4 + 16 + 16 + keys.regKeyLen + nodeKeyLen + 4;
+    // length = magic (int) + nodeId (uuid) + networkId (uuid) + networkRegKey + nodeKey + node type (int) + checksum (int)
+    let regReqLen = 4 + 16 + 16 + keys.regKeyLen + nodeKeyLen + 4 + 4;
     if (buf.byteLength != regReqLen) {
         console.log(buf.byteLength, regReqLen);
         throw "Invalid length";
