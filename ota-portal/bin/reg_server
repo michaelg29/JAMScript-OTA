@@ -80,11 +80,9 @@ const server = tcp.startServer(process.env.REG_SERVER_PORT, undefined, (sock, da
 
                 // create node entry
                 let uuid = req.nodeId == ijam.emptyUUID ? ijam.createUUID() : req.nodeId;
-                node.obj.create(uuid, req.networkId, username, "node", req.nodeType, "", req.nodeKey.toString("hex"))
+                node.obj.create(uuid, req.networkId, username, "node", req.nodeType, req.nodeKey.toString("hex"))
                     .then(() => {
                         console.log("New node with UUID", uuid);
-
-                        // TODO: add to network list
 
                         // generate IV for encryption
                         let iv = crypto.randomBytes(16);

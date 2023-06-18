@@ -5,17 +5,30 @@
 
 const rclient = require("./../utils/redis-client");
 
-rclient.execute("keys", ["node:*"])
-    .then(async ([err, res]) => {
-        if (!res || err) {
-            console.log("Error finding keys.");
-        }
-        else {
-            for (var nodeKey of res) {
-                await rclient.del(nodeKey);
-                console.log("Deleted", nodeKey);
-            }
-        }
+function delKeys(keysFilter) {
+    return new Promise((resolve, reject) => {
+        rclient.execute("keys", [keysFilter])
+            .then(async ([err, res]) => {
+                if (!res || err) {
+                    console.log("Error finding keys.");
+                }
+                else {
+                    for (var nodeKey of res) {
+                        await rclient.del(nodeKey);
+                        console.log("Deleted", nodeKey);
+                    }
+                }
+                console.log("Deleted keys under", keysFilter);
+                resolve();
+            });
+    });
+}
+
+(async () => {
+    await delKeys("node:*");
+    await delKeys("network:*:nodes");
+})()
+    .then(() => {
         console.log("Done");
         process.exit(0);
     });

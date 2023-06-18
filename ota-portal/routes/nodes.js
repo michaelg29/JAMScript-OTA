@@ -36,10 +36,15 @@ async function filterNodeEntries(req, networkIds) {
     const requestedNetworkId = req.query["network-id"] || false;
 
     for (let networkId of networkIds) {
-        if (requestedNetworkId && 
-            networkId !== requestedNetworkId && 
-            await network.belongsToOwner(req, networkId)) {
-            continue;
+        if (requestedNetworkId) {
+            // query for requested network
+            if (networkId != requestedNetworkId) continue;
+
+            try {
+                await network.belongsToOwner(req, networkId);
+            } catch {
+                continue;
+            }
         }
 
         let [networkObj, networkKey] = await network.getNetwork(networkId);

@@ -27,6 +27,7 @@ block content
           td
             a(href="/networks/" + key + "/ijamreg.sh" download) Register
             input(type="submit", value="Delete Network", class="revoke-network", onclick="deleteNetwork('" + key + "')")
+            a(href="/nodes?network-id=" + key) See nodes
 
   h2 Create a new network
   div

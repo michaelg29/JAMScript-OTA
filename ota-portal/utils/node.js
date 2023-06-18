@@ -15,6 +15,7 @@ const statuses = {
 const registrationExpiry = 1000 * 60 * 60 * 24 * 90;
 
 const nodeKey = (nodeId) => "node:" + nodeId;
+const networkNodesKey = (networkId) => "network:" + networkId + ":nodes";
 
 const isExpired = function(nodeObj) {
     const lastRegisteredOn = Number.parseInt(nodeObj.lastRegisteredOn);
@@ -28,17 +29,15 @@ const isExpired = function(nodeObj) {
  * @param {string} username Username of the owning user.
  * @param {string} name Name of the node.
  * @param {string} type Type of the node, selected from `types`.
- * @param {string} sshUser The user to SSH into the node with.
  * @param {string} encKey The encryption key for the node.
  * @returns The created node object.
  */
-const newNodeObj = async function(id, networkId, username, name, type, sshUser, encKey) {
+const newNodeObj = async function(id, networkId, username, name, type, encKey) {
     const nodeObj = {
-        status: statuses.CREATED,
+        status: statuses.OFFLINE,
         name: name,
         type: type,
         encKey: encKey,
-        sshUser: sshUser,
         ip: "",
         createdOn: Date.now(),
         lastRegisteredOn: 0,
@@ -52,21 +51,23 @@ const newNodeObj = async function(id, networkId, username, name, type, sshUser, 
         errors.error(500, err);
     }
 
+    // add to network node list
+    await rclient.addToSet(networkNodesKey(networkId), id);
+
     return nodeObj;
 };
 
 /**
  * Update the node object to be offline with a new registration key.
  * @param {string} id Guid of the node.
- * @param {string} sshUser User to SSH into the node with.
+ * @param {string} encKey The encryption key for the node.
  * @returns The node object with the updated fields.
  */
-const refreshedNodeObj = async function(id, sshUser) {
+const refreshedNodeObj = async function(id, encKey) {
     const nodeObj = {
         status: statuses.OFFLINE,
+        encKey: encKey,
         lastRegisteredOn: Date.now(),
-        regKey: keys.generateKey(),
-        sshUser: sshUser,
     };
 
     [err, redisRes] = await rclient.setObj(nodeKey(id), nodeObj);
@@ -85,7 +86,7 @@ const refreshedNodeObj = async function(id, sshUser) {
 const expiredNodeObj = async function(id) {
     const nodeObj = {
         status: statuses.EXPIRED,
-        regKey: "",
+        encKey: "",
     };
 
     [err, redisRes] = await rclient.setObj(nodeKey(id), nodeObj);
@@ -102,7 +103,7 @@ const expiredNodeObj = async function(id) {
 const revokedNodeObj = async function(id) {
     const nodeObj = {
         status: statuses.REVOKED,
-        regKey: "",
+        encKey: "",
     };
 
     [err, redisRes] = await rclient.setObj(nodeKey(id), nodeObj);
@@ -114,14 +115,12 @@ const revokedNodeObj = async function(id) {
 /**
  * Update the node object to be online.
  * @param {string} id Guid of the node.
- * @param {string} sshUser User to SSH into the node with.
  * @param {string} ip The active IP address of the node.
  * @returns The node object with the updated fields.
  */
-const onlineNodeObj = async function(id, sshUser, ip) {
+const onlineNodeObj = async function(id, ip) {
     const nodeObj = {
         status: statuses.ONLINE,
-        sshUser: sshUser,
         ip: ip,
         lastOnlineOn: Date.now(),
     };
@@ -202,6 +201,7 @@ const invalidateNodeTransition = function(nodeObj, targetStatus, invalidOrigins)
 
 module.exports = {
     nodeKey: nodeKey,
+    networkNodesKey: networkNodesKey,
     types: types,
     typesList: Object.values(types).join(", "),
     validType: (type) => Object.values(types).includes(type),
@@ -220,5 +220,4 @@ module.exports = {
     getNodeFromOwner: getNodeFromOwner,
     validateNodeTransition: validateNodeTransition,
     invalidateNodeTransition: invalidateNodeTransition,
-    networkNodesKey: (networkId) => "network:" + networkId + ":nodes",
 };

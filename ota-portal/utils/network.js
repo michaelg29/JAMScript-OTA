@@ -66,8 +66,8 @@ const userNetworksKeyFromReq = (req) => "user:" + req.user.username + ":networks
 const belongsToOwner = async function(req, netId) {
     const userNetsKey = userNetworksKeyFromReq(req);
     [err, redisRes] = await rclient.isInSet(userNetsKey, netId);
-    if (err || redisRes === 0) {
-        errors.error(404, "Netowkr not found.");
+    if (err || redisRes == 0) {
+        errors.error(404, "Network not found.");
     }
 }
 
