@@ -2,7 +2,7 @@
 
 cd ${JAMOTA_ROOT}
 
-./tools/ziptools.sh
+#./tools/ziptools.sh
 
 echo "Starting Redis server"
 ./redis/redis.sh

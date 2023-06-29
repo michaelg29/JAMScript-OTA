@@ -25,17 +25,16 @@ const createUUID = function(delimeter = '-') {
 
 /**
  * Read a UUID from bytes.
- * @param {Buffer} bytes The bytes representing the UUID.
+ * @param {Buffer} bytes     The bytes containing the UUID.
+ * @param {number} offset    The start location of the UUID.
  * @param {string} delimeter The delimeter to insert into the UUID.
  */
-const readUUID = function(bytes, delimeter = '-') {
-    let uuidStr = bytes.toString("hex");
-
-    return uuidStr.substring(0, 8) + delimeter +
-        uuidStr.substring(8, 12) + delimeter +
-        uuidStr.substring(12, 16) + delimeter +
-        uuidStr.substring(16, 20) + delimeter +
-        uuidStr.substring(20);
+const readUUID = function(bytes, offset = 0, delimeter = '-') {
+    return bytes.subarray(offset + 0, offset + 4).toString("hex") + delimeter +
+        bytes.subarray(offset + 4, offset + 6).toString("hex") + delimeter +
+        bytes.subarray(offset + 6, offset + 8).toString("hex") + delimeter +
+        bytes.subarray(offset + 8, offset + 10).toString("hex") + delimeter +
+        bytes.subarray(offset + 10, offset + 16).toString("hex");
 };
 
 /**
@@ -54,27 +53,28 @@ const parseRegisterRequest = function(buf) {
     // read magic
     let cursor = 0;
     let magic = buf.subarray(cursor, cursor + 4);
+    cursor += 4;
 
     // read nodeId
-    cursor += 4;
-    let nodeId = readUUID(buf.subarray(cursor, cursor + 16));
+    let nodeId = readUUID(buf, cursor);
+    cursor += 16;
 
     // read networkId
-    cursor += 16;
-    let networkId = readUUID(buf.subarray(cursor, cursor + 16));
+    let networkId = readUUID(buf, cursor);
+    cursor += 16
 
     // read networkRegKey
-    cursor += 16
     let networkRegKey = buf.subarray(cursor, cursor + keys.regKeyLen);
+    cursor += keys.regKeyLen;
     if (!keys.validateKeyBuf(networkRegKey)) {
         throw "Invalid key.";
     }
 
-    cursor += keys.regKeyLen;
     let nodeKey = buf.subarray(cursor, cursor + nodeKeyLen);
+    cursor += nodeKeyLen;
 
     // read node type
-    let nodeTypeInt = buf.readInt32LE(regReqLen - 4);
+    let nodeTypeInt = buf.readInt32LE(cursor);
     let nodeType;
     switch(nodeTypeInt) {
         case 0b100:

@@ -5,6 +5,12 @@
 #include "ijam.h"
 
 /**
+ * Close a socket and reset the variable.
+ * @param sock      The pointer to the socket variable.
+ */
+void closeSock(int *sock);
+
+/**
  * Print a UUID in standard format (i.e. 4ccbc31d-58aa-4b32-8c51-db075b08ec9f).
  * @param uuid      The UUID to print.
  */

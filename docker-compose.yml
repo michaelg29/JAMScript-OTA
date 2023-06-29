@@ -22,10 +22,12 @@ services:
       - ${PORTAL_PORT}:${PORTAL_PORT}
       - ${CERT_SERVER_PORT}:${CERT_SERVER_PORT}
       - ${REG_SERVER_PORT}:${REG_SERVER_PORT}
+      - ${STATE_SERVER_PORT}:${STATE_SERVER_PORT}
     expose:
       - ${PORTAL_PORT}
       - ${CERT_SERVER_PORT}
       - ${REG_SERVER_PORT}
+      - ${STATE_SERVER_PORT}
     build:
       context: ./
       dockerfile: Dockerfile

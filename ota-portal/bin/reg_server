@@ -13,36 +13,6 @@ const tcp = require("../utils/tcp");
 
 const privKey = Buffer.from(fs.readFileSync(process.env.RSA_PKEY_PATH, {encoding: "utf-8"}));
 
-/**
- * Send a registration response to the client.
- * @param {number} status The HTTP status of the response.
- * @param {Buffer[]} data The data.
- * @returns The created network object.
- */
-function sendResponse(status, ...data) {
-    let finalLength = 2;
-    for (let buf of data) {
-        finalLength += buf.byteLength;
-    }
-
-    let array = new Uint8Array(finalLength);
-
-    // write status as little endian
-    array[0] = (status >> 0) & 0xff;
-    array[1] = (status >> 8) & 0xff;
-
-    // copy data
-    let cursor = 2;
-    for (let buf of data) {
-        console.log(cursor, buf.toString("hex"));
-        buf.copy(array, cursor);
-        cursor += buf.byteLength;
-    }
-
-    // return
-    return array;
-}
-
 const server = tcp.startServer(process.env.REG_SERVER_PORT, undefined, (sock, data) => {
     try {
         var buf = Buffer.from(data);
@@ -94,9 +64,7 @@ const server = tcp.startServer(process.env.REG_SERVER_PORT, undefined, (sock, da
                         enc += alg.final("hex");
 
                         // send success response
-                        let array = sendResponse(200, iv, Buffer.from(enc, "hex"));
-                        console.log("Sending", array.length, "bytes");
-                        sock.write(array, "utf-8");
+                        tcp.sendResponse(sock, 200, iv, Buffer.from(enc, "hex"));
                     })
                     .catch((error) => {
                         console.log(error);
@@ -113,6 +81,6 @@ const server = tcp.startServer(process.env.REG_SERVER_PORT, undefined, (sock, da
     } catch (error) {
         // send error response
         console.log(error.statusCode, error.message);
-        sendResponse(sock, error.statusCode || 500, Buffer.from(error.message));
+        tcp.sendResponse(sock, error.statusCode || 500, Buffer.from(error.message));
     }
 });

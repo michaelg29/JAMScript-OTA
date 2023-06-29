@@ -14,7 +14,6 @@
 #include <openssl/rsa.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
-#include <openssl/rsa.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 #include <openssl/pem.h>
@@ -34,7 +33,6 @@
 #define KEY_SIZE 800
 
 int sock;
-struct sockaddr_in echoServAddr;
 
 static unsigned char buffer[BUF_SIZE];
 static unsigned char err[BUF_SIZE];
@@ -46,7 +44,7 @@ void closeMsg(const char *msg) {
         printf("%s\n", msg);
     }
     if (sock) {
-        close(sock);
+        closeSock(&sock);
     }
     exit(0);
 }
@@ -83,14 +81,10 @@ int rsa_encrypt(unsigned char *msg, int msg_len, unsigned char *out) {
 
 /** Send `buffer` to the socket. */
 int sendBuffer(int n) {
-    for (int i = 0; i < n; ++i) {
-        printf("%02x", buffer[i] & 0xff);
-    }
     if (send(sock, buffer, n, 0) != n) {
         printf("Could not send %d bytes.\n", n);
         kill();
     }
-    printf("\n");
     return n;
 }
 
@@ -109,7 +103,7 @@ int main(int argc, char *argv[]) {
 
     // connect to certificate server
     if ((sock = connectToListener(OTA_IP, OTA_CERT_PORT)) < 0) {
-        closeMsg("Could not connect to certificate server");
+        closeMsg("Could not connect to certificate server.");
     }
 
     // send hello
@@ -124,7 +118,7 @@ int main(int argc, char *argv[]) {
     memcpy(key, buffer, KEY_SIZE);
     key[KEY_SIZE] = 0;
 
-    close(sock);
+    closeSock(&sock);
 
     // =====================
     // === Register node ===
@@ -135,7 +129,6 @@ int main(int argc, char *argv[]) {
         closeMsg("Could not connect to registration server");
     }
 
-    // generate encryption IV
     srand(time(0));
 
     // try to read existing node information
@@ -168,7 +161,7 @@ int main(int argc, char *argv[]) {
 
     // receive encrypted buffer
     recvBytes = receiveBuffer();
-    close(sock);
+    closeSock(&sock);
 
     // ========================
     // === Process response ===

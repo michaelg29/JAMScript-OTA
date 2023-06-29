@@ -47,6 +47,39 @@ const startServer = function(port, dataCallback = undefined, sockDataCallback = 
     return server;
 };
 
+/**
+ * Send a registration response to the client.
+ * @param {net.Socket} sock The client socket.
+ * @param {number} status   The HTTP status of the response.
+ * @param {Buffer[]} data   The data.
+ * @returns The number of bytes sent to the client.
+ */
+const sendResponse = function(sock, status, ...data) {
+    let finalLength = 2;
+    for (let buf of data) {
+        finalLength += buf.byteLength;
+    }
+
+    let array = new Uint8Array(finalLength);
+
+    // write status as little endian
+    array[0] = (status >> 0) & 0xff;
+    array[1] = (status >> 8) & 0xff;
+
+    // copy data
+    let cursor = 2;
+    for (let buf of data) {
+        console.log(cursor, buf.toString("hex"));
+        buf.copy(array, cursor);
+        cursor += buf.byteLength;
+    }
+
+    // return
+    console.log("Sending", array.length, "bytes");
+    sock.write(array, "utf-8");
+}
+
 module.exports = {
-    startServer: startServer
+    startServer: startServer,
+    sendResponse: sendResponse,
 };

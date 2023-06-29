@@ -11,6 +11,7 @@
 #define OTA_IP "127.0.0.1"
 #define OTA_CERT_PORT 8444
 #define OTA_REG_PORT 8445
+#define OTA_STAT_PORT 8446
 
 /** Boolean. */
 typedef char bool;

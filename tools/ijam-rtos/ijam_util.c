@@ -13,6 +13,13 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+void closeSock(int *sock) {
+    if (sock && *sock) {
+        close(*sock);
+        *sock = 0;
+    }
+}
+
 void printUUID(uuid_t uuid) {
     for (int i = 0; i < UUID_SIZE; ++i) {
         printf("%02X", uuid.bytes[i]);

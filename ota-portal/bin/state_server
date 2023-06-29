@@ -1,3 +1,57 @@
 #!/usr/bin/env node
+/**
+ * Server to respond to node status changes.
+ */
 
-console.log("Hello, world!");
+const crypto = require("crypto");
+const errors = require("./../utils/httperror");
+const ijam = require("../utils/ijam_types");
+const network = require("./../utils/network");
+const node = require("./../utils/node");
+const tcp = require("../utils/tcp");
+
+const server = tcp.startServer(process.env.STATE_SERVER_PORT, undefined, (sock, data) => {
+    try {
+        var buf = Buffer.from(data);
+        console.log("Received", buf.byteLength, "bytes");
+
+        // get the requesting node id
+        let cursor = 0;
+        var nodeId = ijam.readUUID(buf, cursor);
+        console.log("nodeid", nodeId);
+        cursor += 16;
+
+        // get the iv
+        var ivBytes = buf.subarray(cursor, cursor + 16);
+        console.log("iv", ivBytes);
+        cursor += 16;
+
+        // get the encrypted bytes
+        var encBytes = buf.subarray(cursor);
+        console.log("enc", encBytes.byteLength, encBytes);
+
+        // get node key and decrypt
+        let err = undefined;
+        node.getNode(nodeId)
+            .then(([nodeObj, _]) => {
+                let key = Buffer.from(nodeObj.encKey, "hex");
+                let alg = crypto.createDecipheriv("aes-256-cbc", key, ivBytes);
+                alg.setAutoPadding(false);
+                let dec = alg.update(encBytes, "utf-8", "hex"); // decrypt up to checksum
+                dec += alg.final("hex");
+                console.log("decrypted", dec);
+            })
+            .catch((error) => {
+                console.log("err", error);
+                err = error;
+            });
+
+        if (err) {
+            throw err;
+        }
+    } catch (error) {
+        // send error response
+        console.log(error.statusCode, error.message);
+        tcp.sendResponse(sock, error.statusCode || 500, Buffer.from(error.message));
+    }
+});

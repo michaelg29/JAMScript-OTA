@@ -9,6 +9,9 @@ CFLAGS=-g -lssl -lcrypto
 ijamreg: ijamreg.o ijam_util.o
 	gcc ijamreg.o ijam_util.o $(CFLAGS) -o a.o
 
+ijamonline: ijamonline.o ijam_util.o
+	gcc ijamonline.o ijam_util.o $(CFLAGS) -o a.o
+
 run:
 	exec ./a.o
 
