@@ -135,11 +135,21 @@ int main(int argc, char *argv[]) {
     // === Start listener ===
     // ======================
 
+    //updateStatus(loading);
+
+    // revert to previous version
+
+    // jxe error detection
+
+    //if (!aes_decrypt()) {
+        // notify control center of bad file
+    //}
+
     // ============================
     // === Send offline request ===
     // ============================
 
-    updateStatus(offline);
+    //updateStatus(offline);
 
     // close
     closeMsg("Connection closed.");

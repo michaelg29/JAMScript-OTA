@@ -1,6 +1,12 @@
+---
+layout: page
+title: Home
+permalink: /
+---
+
 # JAMScript Over-the-Air Update Platform
 
-This is the main repository for JAMScript's Over-the-Air (OTA) platform. Please see [README.md](../README.md) for startup instructions for local development and deployment.
+This is the main repository for JAMScript's Over-the-Air (OTA) platform. Please see [README.md](https://github.com/michaelg29/JAMScript-OTA/blob/main/README.md) for startup instructions for local development and deployment.
 
 This repository houses a Docker container that represents a [control center](#control-center) running on a Linux machine. The control center serves as a hub to link users to their nodes without always needing to have a physical link to the nodes. There are several [tool programs](#tool-programs), that will be served to the nodes (edge devices), which act in conjunction with the JAMScript runtime. For persistence, the control center hosts a local [Redis database](./redis.md).
 

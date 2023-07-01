@@ -1,3 +1,9 @@
+---
+layout: page
+title: Redis
+permalink: /redis/
+---
+
 # Redis database
 
 The control center hosts a local Redis database for persistence. There is a customized Node.JS client that is accessible by the listener programs on the control center.
