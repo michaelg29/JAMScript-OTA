@@ -1,4 +1,5 @@
 const redis = require('redis');
+const errors = require('./httperror');
 const rclient = redis.createClient({
     host: process.env.REDIS_HOST,
     port: process.env.REDIS_PORT,
@@ -22,6 +23,7 @@ async function execute(command, args) {
     });
 }
 
+/** Set an object in the database. */
 async function setObj(key, obj) {
     const args = [key];
 
@@ -31,6 +33,15 @@ async function setObj(key, obj) {
     });
 
     return await execute("hset", args);
+}
+
+/** Set an object in the database or throw an error. */
+async function setObjOrThrow(key, obj) {
+    let [err, redisRes] = await setObj(key, obj);
+    if (err) {
+        errors.error(500, err);
+    }
+    return redisRes;
 }
 
 async function getObj(key) {
@@ -61,6 +72,7 @@ module.exports = {
     createGUID: createGUID,
     execute: execute,
     setObj: setObj,
+    setObjOrThrow: setObjOrThrow,
     getObj: getObj,
     del: del,
     addToSet: addToSet,

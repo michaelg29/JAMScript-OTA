@@ -36,7 +36,6 @@ const server = tcp.startServer(process.env.REG_SERVER_PORT, undefined, (sock, da
         }
 
         // validate network registration
-        let err = undefined;
         network.getNetwork(req.networkId)
             .then(([networkObj, _]) => {
                 if (!networkObj) {
@@ -57,20 +56,14 @@ const server = tcp.startServer(process.env.REG_SERVER_PORT, undefined, (sock, da
                         tcp.encryptAndSend(sock, 200, req.nodeKey, Buffer.from(uuid.replace(/-/g, ""), "hex"));
                     })
                     .catch((error) => {
-                        console.log(error);
-                        errors.error(500, "Could not post");
+                        tcp.sendError(sock, error);
                     });
             })
             .catch((error) => {
-                err = error;
+                tcp.sendError(sock, error);
             });
-
-        if (err) {
-            throw err;
-        }
     } catch (error) {
         // send error response
-        console.log(error.statusCode, error.message);
-        tcp.sendResponse(sock, error.statusCode || 500, Buffer.from(error.message));
+        tcp.sendError(sock, error);
     }
 });

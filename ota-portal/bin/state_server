@@ -20,22 +20,45 @@ const server = tcp.startServer(process.env.STATE_SERVER_PORT, undefined, (sock, 
         cursor += 16;
 
         // get node key and decrypt
-        let err = undefined;
         node.getNode(nodeId)
             .then(([nodeObj, _]) => {
-                tcp.decryptMessage(buf, Buffer.from(nodeObj.encKey, "hex"), cursor);
+                // decrypt
+                let dec = tcp.decryptMessage(buf, Buffer.from(nodeObj.encKey, "hex"), cursor);
+                if (!dec) {
+                    errors.error(400, "Invalid checksum");
+                }
+
+                let promise = undefined;
+
+                // validate requested transition
+                let nodeStatus = ijam.parseNodeStatusRequest(dec);
+                switch (nodeStatus.nodeStatus) {
+                    case ijam.node.statuses.ONLINE:
+                        promise = node.transition.online(nodeId, nodeObj, sock.address().address);
+                        break;
+                    case ijam.node.statuses.LOADING:
+                        promise = node.transition.loading(nodeId, nodeObj);
+                        break;
+                    case ijam.node.statuses.OFFLINE:
+                        promise = node.transition.offline(nodeId, nodeObj);
+                        break;
+                }
+
+                console.log(nodeStatus.nodeStatus);
+
+                promise
+                    .then(() => {
+                        tcp.sendResponse(sock, 200);
+                    })
+                    .catch((error) => {
+                        tcp.sendError(sock, error);
+                    })
             })
             .catch((error) => {
-                console.log("err", error);
-                err = error;
+                tcp.sendError(sock, error);
             });
-
-        if (err) {
-            throw err;
-        }
     } catch (error) {
         // send error response
-        console.log(error.statusCode, error.message);
-        tcp.sendResponse(sock, error.statusCode || 500, Buffer.from(error.message));
+        tcp.sendError(sock, error);
     }
 });

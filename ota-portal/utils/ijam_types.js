@@ -1,13 +1,24 @@
 
 const keys = require("./keys");
-const crypto = require("crypto");
 
-const node_types = {
+const nodeKeyLen = 32; // AES-256-CBC
+
+// Node types
+const node_type_e = {
     DEVICE: "device",
     FOG: "fog",
     CLOUD: "cloud"
 };
-const nodeKeyLen = 32; // AES-256-CBC
+
+// Node statuses
+const node_status_e = {
+    CREATED: "created",
+    OFFLINE: "offline",
+    LOADING: "loading",
+    ONLINE: "online",
+    EXPIRED: "expired",
+    REVOKED: "revoked",
+};
 
 const emptyUUID = "00000000-0000-0000-0000-000000000000";
 
@@ -75,13 +86,13 @@ const parseRegisterRequest = function(buf) {
     let nodeType;
     switch(nodeTypeInt) {
         case 0b100:
-            nodeType = node_types.CLOUD;
+            nodeType = node_type_e.CLOUD;
             break;
         case 0b010:
-            nodeType = node_types.FOG;
+            nodeType = node_type_e.FOG;
             break;
         default: // case 0b001
-            nodeType = node_types.DEVICE;
+            nodeType = node_type_e.DEVICE;
             break;
     }
 
@@ -94,12 +105,39 @@ const parseRegisterRequest = function(buf) {
     };
 };
 
+/**
+ * Parse a status request.
+ * @param {Buffer} buf Decrypted request buffer.
+ * @returns The request.
+ */
+const parseNodeStatusRequest = function(buf) {
+    let nodeStatusInt = buf.readUint8(0);
+    let nodeStatus;
+    switch (nodeStatusInt) {
+        case 0b100:
+            nodeStatus = node_status_e.OFFLINE;
+            break;
+        case 0b010:
+            nodeStatus = node_status_e.LOADING;
+            break;
+        default: // case 0b001
+            nodeStatus = node_status_e.ONLINE;
+            break;
+    }
+
+    return {
+        nodeStatus: nodeStatus,
+    };
+}
+
 module.exports = {
     node: {
-        types: node_types
+        types: node_type_e,
+        statuses: node_status_e,
     },
     emptyUUID: emptyUUID,
     createUUID: createUUID,
     readUUID: readUUID,
     parseRegisterRequest: parseRegisterRequest,
+    parseNodeStatusRequest: parseNodeStatusRequest,
 };

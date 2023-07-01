@@ -80,6 +80,16 @@ const sendResponse = function(sock, status, ...data) {
     sock.write(array, "utf-8");
 }
 
+/**
+ * Send an error message to a client.
+ * @param {net.Socket} sock The client socket.
+ * @param {object} error    Error object containing `statusCode` and `message`.
+ */
+const sendError = function(sock, error) {
+    console.log("error", error);
+    sendResponse(sock, error.statusCode || 500, Buffer.from(error.message || "Error"));
+}
+
 const aes_alg = "aes-256-cbc";
 
 /**
@@ -136,13 +146,11 @@ const decryptMessage = function(buf, key, cursor = 0) {
 
     // verify checksum
     let expectedChecksum = decBuf.readUInt8(decBuf.byteLength - padding);
-    console.log(padding, expectedChecksum);
     let actualChecksum = 0;
     for (let i = 0; i < decBuf.byteLength - padding; ++i) {
         actualChecksum ^= decBuf.readUInt8(i);
     }
     if (actualChecksum != expectedChecksum) {
-        console.log("Invalid checksum");
         return undefined;
     }
 
@@ -152,6 +160,7 @@ const decryptMessage = function(buf, key, cursor = 0) {
 module.exports = {
     startServer: startServer,
     sendResponse: sendResponse,
+    sendError: sendError,
     encryptAndSend: encryptAndSend,
     decryptMessage: decryptMessage,
 };

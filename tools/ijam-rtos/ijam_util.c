@@ -107,6 +107,7 @@ int aes_encrypt(unsigned char *plaintext, int len, int maxInLen, unsigned char *
     }
 
     // compute checksum
+    plaintext[len] = 0;
     for (int i = 16; i < len; ++i) {
         plaintext[len] ^= plaintext[i];
     }

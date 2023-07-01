@@ -2,15 +2,9 @@ const errors = require("./httperror");
 const rclient = require("./redis-client");
 const keys = require("./keys");
 
-const types = require("./ijam_types").node.types;
-
-const statuses = {
-    CREATED: "created",
-    OFFLINE: "offline",
-    ONLINE: "online",
-    EXPIRED: "expired",
-    REVOKED: "revoked",
-};
+const ijam_types = require("./ijam_types");
+const types = ijam_types.node.types;
+const statuses = ijam_types.node.statuses;
 
 const registrationExpiry = 1000 * 60 * 60 * 24 * 90;
 
@@ -70,11 +64,7 @@ const refreshedNodeObj = async function(id, encKey) {
         lastRegisteredOn: Date.now(),
     };
 
-    [err, redisRes] = await rclient.setObj(nodeKey(id), nodeObj);
-    if (err) {
-        errors.error(500, err);
-    }
-
+    await rclient.setObjOrThrow(nodeKey(id), nodeObj);
     return nodeObj;
 };
 
@@ -89,10 +79,8 @@ const expiredNodeObj = async function(id) {
         encKey: "",
     };
 
-    [err, redisRes] = await rclient.setObj(nodeKey(id), nodeObj);
-    if (err) {
-        errors.error(500, err);
-    }
+    await rclient.setObjOrThrow(nodeKey(id), nodeObj);
+    return nodeObj;
 };
 
 /**
@@ -106,15 +94,13 @@ const revokedNodeObj = async function(id) {
         encKey: "",
     };
 
-    [err, redisRes] = await rclient.setObj(nodeKey(id), nodeObj);
-    if (err) {
-        errors.error(500, err);
-    }
+    await rclient.setObjOrThrow(nodeKey(id), nodeObj);
+    return nodeObj;
 };
 
 /**
  * Update the node object to be online.
- * @param {string} id Guid of the node.
+ * @param {string} id UUID of the node.
  * @param {string} ip The active IP address of the node.
  * @returns The node object with the updated fields.
  */
@@ -125,11 +111,40 @@ const onlineNodeObj = async function(id, ip) {
         lastOnlineOn: Date.now(),
     };
 
-    [err, redisRes] = await rclient.setObj(nodeKey(id), nodeObj);
-    if (err) {
-        errors.error(500, err);
-    }
+    await rclient.setObjOrThrow(nodeKey(id), nodeObj);
+    return nodeObj;
 };
+
+/**
+ * Update the node object to be offline.
+ * @param {string} id UUID of the node.
+ * @returns The node object with the updated fields.
+ */
+const offlineNodeObj = async function(id) {
+    const nodeObj = {
+        status: statuses.OFFLINE,
+        ip: "",
+        lastOnlineOn: Date.now(),
+    };
+
+    await rclient.setObjOrThrow(nodeKey(id), nodeObj);
+    return nodeObj;
+}
+
+/**
+ * Update the node object to be loading.
+ * @param {string} id UUID of the node.
+ * @returns The node object with the updated fields.
+ */
+const loadingNodeObj = async function(id) {
+    const nodeObj = {
+        status: statuses.LOADING,
+        lastOnlineOn: Date.now(),
+    };
+
+    await rclient.setObjOrThrow(nodeKey(id), nodeObj);
+    return nodeObj;
+}
 
 /**
  * Get the node from the database. Throw an error if it does not exist.
@@ -199,6 +214,40 @@ const invalidateNodeTransition = function(nodeObj, targetStatus, invalidOrigins)
     }
 }
 
+/**
+ * Validate a node transition to online and update the database.
+ * @param {string} nodeId  UUID of the node.
+ * @param {object} nodeObj Node object.
+ * @param {string} ip      IP address of the connected node.
+ */
+const transitionNodeOnline = async function(nodeId, nodeObj, ip) {
+    validateNodeTransition(nodeObj, statuses.ONLINE, [statuses.OFFLINE]);
+
+    await onlineNodeObj(nodeId, ip);
+}
+
+/**
+ * Validate a node transition to loading and update the database.
+ * @param {string} nodeId  UUID of the node.
+ * @param {object} nodeObj Node object.
+ */
+const transitionNodeLoading = async function(nodeId, nodeObj) {
+    validateNodeTransition(nodeObj, statuses.LOADING, [statuses.ONLINE]);
+
+    await loadingNodeObj(nodeId);
+}
+
+/**
+ * Validate a node transition to offline and update the database.
+ * @param {string} nodeId  UUID of the node.
+ * @param {object} nodeObj Node object.
+ */
+const transitionNodeOffline = async function(nodeId, nodeObj) {
+    validateNodeTransition(nodeObj, statuses.OFFLINE, [statuses.ONLINE, statuses.LOADING]);
+
+    await offlineNodeObj(nodeId);
+}
+
 module.exports = {
     nodeKey: nodeKey,
     networkNodesKey: networkNodesKey,
@@ -214,6 +263,13 @@ module.exports = {
         expire: expiredNodeObj,
         revoke: revokedNodeObj,
         online: onlineNodeObj,
+        offline: offlineNodeObj,
+        loading: loadingNodeObj,
+    },
+    transition: {
+        online: transitionNodeOnline,
+        loading: transitionNodeLoading,
+        offline: transitionNodeOffline,
     },
     getNode: getNode,
     nodeExists: nodeExists,

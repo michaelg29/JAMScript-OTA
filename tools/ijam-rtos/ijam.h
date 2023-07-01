@@ -33,8 +33,9 @@ typedef enum {
 
 /** Node statuses. */
 typedef enum {
-    online  = 0b01,
-    offline = 0b10,
+    online  = 0b001,
+    loading = 0b010,
+    offline = 0b100,
 } node_status_e;
 
 /** Standard length of the network registration key. */

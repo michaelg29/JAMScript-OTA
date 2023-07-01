@@ -30,6 +30,7 @@
 int clientSock;
 int servSock;
 
+register_request_t node;
 static unsigned char buffer[BUF_SIZE];
 static unsigned char buffer2[BUF_SIZE];
 static unsigned char err[BUF_SIZE];
@@ -70,40 +71,25 @@ int receiveBuffer(int sock) {
     return bytesRecv;
 }
 
-int main(int argc, char *argv[]) {
-    // try to read existing node information
-    register_request_t node;
-    int bytes_read = read_reg_info(&node);
-    if (!bytes_read) {
-        closeMsg("Node information not saved.");
-    }
-    
-    // ===========================
-    // === Send online request ===
-    // ===========================
-
+void updateStatus(node_status_e status) {
     // connect to status server
     if ((clientSock = connectToListener(OTA_IP, OTA_STAT_PORT)) < 0) {
         closeMsg("Could not connect to status server.");
     }
 
-    // send request
+    // construct request
     memcpy(buffer, node.nodeId.bytes, UUID_SIZE);
 
     // generate random IV
     srand(time(0));
-    printf("\nIV:\n");
     for (int i = 0; i < 16; ++i) {
         buffer2[i] = rand() & 0xFF; // put random byte in IV for encryption
         buffer[i + UUID_SIZE] = buffer2[i]; // put random byte to send to server
-        printf("%02x", buffer2[i] & 0xff);
     }
-    printf("\n");
 
     // construct message
-    const char *helloStr = "Hello, servers bro!";
-    int decSize = strlen(helloStr) + 1;
-    memcpy(buffer2 + 16, helloStr, decSize);
+    int decSize = 1;
+    buffer2[16] = status & 0xff;
 
     // encrypt and send
     int encBytes = aes_encrypt(buffer2, 16 + decSize, BUF_SIZE, buffer + UUID_SIZE, BUF_SIZE - UUID_SIZE - 16, node.nodeKey);
@@ -115,8 +101,35 @@ int main(int argc, char *argv[]) {
     printf("\n");
     sendBuffer(clientSock, encBytes + UUID_SIZE);
 
+    // validate response
+    int recvBytes = receiveBuffer(clientSock);
+    int cursor = 0;
+
+    // read status
+    short retStatus = *((short*)buffer + cursor);
+    cursor += 2;
+    printf("Status: %d\n", retStatus);
+    if (retStatus != 200) {
+        printf("Error: %s\n", buffer + cursor);
+        kill();
+    }
+
     // close connection
     closeSock(&clientSock);
+}
+
+int main(int argc, char *argv[]) {
+    // try to read existing node information
+    int bytes_read = read_reg_info(&node);
+    if (!bytes_read) {
+        closeMsg("Node information not saved.");
+    }
+
+    // ===========================
+    // === Send online request ===
+    // ===========================
+
+    updateStatus(online);
 
     // ======================
     // === Start listener ===
@@ -125,6 +138,8 @@ int main(int argc, char *argv[]) {
     // ============================
     // === Send offline request ===
     // ============================
+
+    updateStatus(offline);
 
     // close
     closeMsg("Connection closed.");
