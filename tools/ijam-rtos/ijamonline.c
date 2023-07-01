@@ -32,7 +32,6 @@ int servSock;
 
 static unsigned char buffer[BUF_SIZE];
 static unsigned char buffer2[BUF_SIZE];
-static unsigned char buffer3[BUF_SIZE];
 static unsigned char err[BUF_SIZE];
 
 /** Kill the program with a message. */
@@ -95,34 +94,26 @@ int main(int argc, char *argv[]) {
     srand(time(0));
     printf("\nIV:\n");
     for (int i = 0; i < 16; ++i) {
-        buffer2[i] = rand() & 0xFF;
-        buffer[i + UUID_SIZE] = buffer2[i];
+        buffer2[i] = rand() & 0xFF; // put random byte in IV for encryption
+        buffer[i + UUID_SIZE] = buffer2[i]; // put random byte to send to server
         printf("%02x", buffer2[i] & 0xff);
     }
     printf("\n");
 
     // construct message
-    const char *helloStr = "Hello, servers!";
-    memcpy(buffer2 + 16, helloStr, strlen(helloStr) + 1);
+    const char *helloStr = "Hello, servers bro!";
     int decSize = strlen(helloStr) + 1;
+    memcpy(buffer2 + 16, helloStr, decSize);
 
     // encrypt and send
-    int encBytes = aes_encrypt(buffer2, 16 + decSize, buffer + UUID_SIZE, BUF_SIZE - UUID_SIZE - 16, node.nodeKey);
-    printf("%d %d %d\n", encBytes, UUID_SIZE, decSize);
+    int encBytes = aes_encrypt(buffer2, 16 + decSize, BUF_SIZE, buffer + UUID_SIZE, BUF_SIZE - UUID_SIZE - 16, node.nodeKey);
+    printf("%d %d\n", encBytes, decSize);
     printf("\nCiphertext:\n");
-    //memcpy(buffer + UUID_SIZE, buffer2, 16);
-    for (int i = 0; i < 64; ++i) {
+    for (int i = 0; i < UUID_SIZE + encBytes; ++i) {
         printf("%02x", buffer[i] & 0xff);
     }
     printf("\n");
     sendBuffer(clientSock, encBytes + UUID_SIZE);
-
-    int decBytes = aes_decrypt(buffer + UUID_SIZE, 16 + encBytes, buffer3, BUF_SIZE, node.nodeKey);
-    printf("\nPlaintext:\n");
-    for (int i = 0; i < 64; ++i) {
-        printf("%02x", buffer3[i] & 0xff);
-    }
-    printf("\n");
 
     // close connection
     closeSock(&clientSock);

@@ -1,4 +1,5 @@
 
+const crypto = require("crypto");
 const net = require("net");
 
 /**
@@ -79,7 +80,78 @@ const sendResponse = function(sock, status, ...data) {
     sock.write(array, "utf-8");
 }
 
+const aes_alg = "aes-256-cbc";
+
+/**
+ * Encrypt data then send a response to a socket using AES-256-CBC.
+ * @param {net.Socket} sock The socket to transmit to.
+ * @param {number} status   The HTTP status of the response.
+ * @param {Buffer} key      The AES key.
+ * @param {Buffer} data     The data.
+ */
+const encryptAndSend = function(sock, status, key, data) {
+    // generate IV for encryption
+    let ivBytes = crypto.randomBytes(16);
+
+    // compute checksum
+    let checksumBuf = Buffer.alloc(1);
+    let checksum = 0;
+    for (let i = 0; i < data.byteLength; ++i) {
+        checksum ^= data.readUint8(i);
+    }
+    checksumBuf.writeUInt8(checksum, 0);
+
+    console.log("data", data);
+
+    // encrypt the data
+    let alg = crypto.createCipheriv(aes_alg, key, ivBytes);
+    let enc = alg.update(data, "utf-8", "hex");
+    enc += alg.update(checksumBuf, "utf-8", "hex");
+    enc += alg.final("hex");
+
+    sendResponse(sock, status, ivBytes, Buffer.from(enc, "hex"));
+}
+
+/**
+ * Decrypt a received buffer using AES-256-CBC.
+ * @param {Buffer} buf    The received data.
+ * @param {Buffer} key    The AES key.
+ * @param {number} cursor The starting offset of the encrypted data within the buffer.
+ * @returns               The decrypted buffer without padding, undefined if invalid.
+ */
+const decryptMessage = function(buf, key, cursor = 0) {
+    var ivBytes = buf.subarray(cursor, cursor + 16);
+    cursor += 16;
+
+    // decrypt buffer to hex string
+    let alg = crypto.createDecipheriv(aes_alg, key, ivBytes);
+    alg.setAutoPadding(false);
+    let dec = alg.update(buf.subarray(cursor), "utf-8", "hex");
+    dec += alg.final("hex");
+    console.log("decrypted", dec);
+
+    // calculate padding
+    let decBuf = Buffer.from(dec, "hex");
+    let padding = decBuf.readUInt8(decBuf.byteLength - 1);
+
+    // verify checksum
+    let expectedChecksum = decBuf.readUInt8(decBuf.byteLength - padding);
+    console.log(padding, expectedChecksum);
+    let actualChecksum = 0;
+    for (let i = 0; i < decBuf.byteLength - padding; ++i) {
+        actualChecksum ^= decBuf.readUInt8(i);
+    }
+    if (actualChecksum != expectedChecksum) {
+        console.log("Invalid checksum");
+        return undefined;
+    }
+
+    return decBuf.subarray(0, -padding);
+}
+
 module.exports = {
     startServer: startServer,
     sendResponse: sendResponse,
+    encryptAndSend: encryptAndSend,
+    decryptMessage: decryptMessage,
 };

@@ -29,7 +29,13 @@ typedef enum {
     device = 0b001,
     fog =    0b010,
     cloud =  0b100,
-} node_type_t;
+} node_type_e;
+
+/** Node statuses. */
+typedef enum {
+    online  = 0b01,
+    offline = 0b10,
+} node_status_e;
 
 /** Standard length of the network registration key. */
 #define REG_KEY_LEN 32
@@ -37,12 +43,11 @@ typedef enum {
 
 /** Node registration request structure. */
 typedef struct {
-    int magic;                          // Random generated magic number.
     uuid_t nodeId;                      // The node uuid.
     uuid_t networkId;                   // The network uuid.
     char networkRegKey[REG_KEY_LEN];    // The registration key for the network.
     char nodeKey[NODE_KEY_LEN];         // The node encryption key.
-    node_type_t nodeType;               // The node type.
+    node_type_e nodeType;               // The node type.
     unsigned int checksum;              // Checksum to validate persisted data.
 } register_request_t;
 #define REGISTER_REQUEST_T_SIZE (int)sizeof(register_request_t)

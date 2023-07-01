@@ -54,17 +54,7 @@ const server = tcp.startServer(process.env.REG_SERVER_PORT, undefined, (sock, da
                     .then(() => {
                         console.log("New node with UUID", uuid);
 
-                        // generate IV for encryption
-                        let iv = crypto.randomBytes(16);
-
-                        // encrypt the magic and UUID together
-                        let alg = crypto.createCipheriv("aes-256-cbc", req.nodeKey, iv);
-                        let enc = alg.update(req.magic, "utf-8", "hex");
-                        enc += alg.update(Buffer.from(uuid.replace(/-/g, ""), "hex"), "utf-8", "hex");
-                        enc += alg.final("hex");
-
-                        // send success response
-                        tcp.sendResponse(sock, 200, iv, Buffer.from(enc, "hex"));
+                        tcp.encryptAndSend(sock, 200, req.nodeKey, Buffer.from(uuid.replace(/-/g, ""), "hex"));
                     })
                     .catch((error) => {
                         console.log(error);

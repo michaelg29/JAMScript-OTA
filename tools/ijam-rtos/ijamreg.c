@@ -136,7 +136,6 @@ int main(int argc, char *argv[]) {
     int bytes_read = read_reg_info(&node);
     if (!bytes_read) {
         // initialize node information
-        node.magic = rand();
         memset(node.nodeId.bytes, 0, UUID_SIZE);
         parseHex(NETWORK_ID, UUID_SIZE, node.networkId.bytes);
         parseHex(NETWORK_REG_KEY, REG_KEY_LEN, node.networkRegKey);
@@ -197,17 +196,10 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < decBytes; ++i) {
         printf("%02x", dec[i] & 0xff);
     }
-
-    // check magic
-    cursor = 16; // skip IV
-    int retMagic = *((int*)(dec + cursor));
-    cursor += 4;
-    printf("Magic: expected %08x, received %08x\n", node.magic, retMagic);
-    if (retMagic != node.magic) {
-        closeMsg("Mismatched magic.");
-    }
+    printf("\n");
 
     // save node information
+    cursor = 16; // skip IV
     memcpy(node.nodeId.bytes, dec + cursor, UUID_SIZE);
     cursor += 16;
     printUUID(node.nodeId);

@@ -92,12 +92,24 @@ int connectToListener(const char *ip, short port) {
     return sock;
 }
 
-int aes_encrypt(unsigned char *plaintext, int len, unsigned char *enc, int maxOutLen, unsigned char *key) {
+int aes_encrypt(unsigned char *plaintext, int len, int maxInLen, unsigned char *enc, int maxOutLen, unsigned char *key) {
     // pad length to allow for a complete final block
-    int paddedLength = len + (len % 16 ? 16 - (len % 16) : 0);
+    int paddedLength = len + 2; // plaintext, checksum (1 byte), padding (1 byte)
+    paddedLength += paddedLength % 16 ? 16 - (paddedLength % 16) : 0;
 
     // validate input and output sizes
-    if (len <= 0 || paddedLength > maxOutLen) return 0;
+    if (len <= 0 || paddedLength > maxOutLen || paddedLength > maxInLen) return 0;
+
+    // add padding
+    int padding = paddedLength - len;
+    if (len < paddedLength) {
+        memset(plaintext + len, padding, padding);
+    }
+
+    // compute checksum
+    for (int i = 16; i < len; ++i) {
+        plaintext[len] ^= plaintext[i];
+    }
 
     // initialize key structure
     AES_KEY aesKey;
@@ -112,13 +124,13 @@ int aes_encrypt(unsigned char *plaintext, int len, unsigned char *enc, int maxOu
     }
 
     printf("\nPlaintext:\n");
-    for (int i = 16; i < len; ++i) {
+    for (int i = 16; i < paddedLength; ++i) {
         printf("%02x", plaintext[i] & 0xff);
     }
 #endif
 
     // encrypt
-    AES_cbc_encrypt(plaintext, enc, (size_t)len, &aesKey, plaintext, AES_ENCRYPT);
+    AES_cbc_encrypt(plaintext, enc, (size_t)paddedLength, &aesKey, plaintext, AES_ENCRYPT);
 
 #ifdef IJAM_DEBUG
     printf("\nCiphertext:\n");
@@ -128,7 +140,7 @@ int aes_encrypt(unsigned char *plaintext, int len, unsigned char *enc, int maxOu
     printf("\n");
 #endif
 
-    return len;
+    return paddedLength;
 }
 
 int aes_decrypt(unsigned char *enc, int len, unsigned char *dec, int maxOutLen, unsigned char *key) {
@@ -151,9 +163,23 @@ int aes_decrypt(unsigned char *enc, int len, unsigned char *dec, int maxOutLen, 
     for (int i = 16; i < len; ++i) {
         printf("%02x", enc[i] & 0xff);
     }
+    printf("\n");
 #endif
 
     AES_cbc_encrypt(enc, dec, (size_t)len, &aesKey, enc, AES_DECRYPT);
+
+    // account for padding
+    int checksumIdx = len - dec[len - 1] + 1;
+    unsigned char expectedChecksum = dec[checksumIdx];
+
+    // compute checksum
+    unsigned char actualChecksum = 0;
+    for (int i = 16; i < checksumIdx; ++i) {
+        actualChecksum ^= dec[i];
+    }
+    if (actualChecksum != expectedChecksum) {
+        return 0;
+    }
 
 #ifdef IJAM_DEBUG
     printf("\nPlaintext:\n");
@@ -163,7 +189,7 @@ int aes_decrypt(unsigned char *enc, int len, unsigned char *dec, int maxOutLen, 
     printf("\n");
 #endif
 
-    return len;
+    return checksumIdx;
 }
 
 unsigned int calc_checksum(register_request_t *reg_info) {

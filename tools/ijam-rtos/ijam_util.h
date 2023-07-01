@@ -36,12 +36,13 @@ int connectToListener(const char *ip, short port);
  * Encrypt a message using AES-256-CBC.
  * @param plaintext The plaintext message with the IV as the first 16 bytes.
  * @param len       The length of the message plus 16 bytes for the IV.
+ * @param maxInLen  The allocated size of the buffer containing the input message.
  * @param enc       The output buffer for the encrypted message and the IV as the first 16 bytes.
  * @param maxOutLen The maximum length of the output buffer.
  * @param key       The 32-byte key to use for encryption.
  * @returns         The size of the encrypted message.
  */
-int aes_encrypt(unsigned char *plaintext, int len, unsigned char *enc, int maxOutLen, unsigned char *key);
+int aes_encrypt(unsigned char *plaintext, int len, int maxInLen, unsigned char *enc, int maxOutLen, unsigned char *key);
 
 /**
  * Decrypt a message using AES-256-CBC.
