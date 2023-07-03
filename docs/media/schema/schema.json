@@ -1,0 +1,79 @@
+{
+    "types": {
+        "const": {
+            "REG_KEY_LEN": {
+                "type": "int",
+                "value": 32,
+                "description": "Byte length of the network registration key."
+            },
+            "NODE_KEY_LEN": {
+                "type": "int",
+                "value": 32,
+                "description": "Byte length of the node encryption key for AES-256-CBC."
+            }
+        },
+        "enum": {
+            "node_type_e": {
+                "CLOUD": "0b100",
+                "FOG": "0b010",
+                "DEVICE": "0b001"
+            },
+            "node_status_e": {
+                "OFFLINE": "0b100",
+                "LOADING": "0b010",
+                "ONLINE": "0b001"
+            }
+        },
+        "struct": {
+            "uuid_t": {
+                "size": 16
+            },
+            "register_request_t": {
+                "fields": {
+                    "nodeId": {
+                        "type": "uuid_t",
+                        "description": "The requested node ID."
+                    },
+                    "networkId": {
+                        "type": "uuid_t",
+                        "description": "The requested network ID to register with."
+                    },
+                    "networkRegKey": {
+                        "type": "char[REG_KEY_LEN]",
+                        "description": "Registration key for the network."
+                    },
+                    "nodeKey": {
+                        "type": "char[NODE_KEY_LEN]",
+                        "description": "Encryption key to use for communications with the control center."
+                    },
+                    "nodeType": {
+                        "type": "node_type_e",
+                        "description": "Node type."
+                    },
+                    "checksum": {
+                        "type": "int",
+                        "description": "Checksum to validate persisted data."
+                    }
+                }
+            },
+            "status_request_t": {
+                "fields": {
+                    "nodeStatus": {
+                        "type": "node_status_e",
+                        "description": "Requested transition state"
+                    }
+                }
+            }
+        }
+    },
+    "schema": {
+        "register_req": {
+            "name": "Register Request",
+            "type": "register_request_t"
+        },
+        "status_req": {
+            "name": "Status Request",
+            "type": "status_request_t"
+        }
+    }
+}
