@@ -111,7 +111,7 @@ const parseRegisterRequest = function(buf) {
  * @returns The request.
  */
 const parseNodeStatusRequest = function(buf) {
-    let nodeStatusInt = buf.readUint8(0);
+    let nodeStatusInt = buf.readInt32LE(0);
     let nodeStatus;
     switch (nodeStatusInt) {
         case 0b100:

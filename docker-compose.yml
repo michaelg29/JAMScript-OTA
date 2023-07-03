@@ -5,9 +5,9 @@ networks:
     driver: bridge
 
 services:
-  ijam-master:
-    image: ijam-master
-    container_name: "ijam-master"
+  ijam-cc:
+    image: ijam-cc
+    container_name: "ijam-cc"
     env_file:
       - ".env"
     environment:

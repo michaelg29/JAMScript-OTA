@@ -88,8 +88,11 @@ void updateStatus(node_status_e status) {
     }
 
     // construct message
-    int decSize = 1;
-    buffer2[16] = status & 0xff;
+    status_request_t req;
+    req.nodeStatus = status;
+
+    int decSize = STATUS_REQUEST_T_SIZE;
+    memcpy(buffer2 + 16, &req, STATUS_REQUEST_T_SIZE);
 
     // encrypt and send
     int encBytes = aes_encrypt(buffer2, 16 + decSize, BUF_SIZE, buffer + UUID_SIZE, BUF_SIZE - UUID_SIZE - 16, node.nodeKey);

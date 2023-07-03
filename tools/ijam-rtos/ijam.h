@@ -53,4 +53,10 @@ typedef struct {
 } register_request_t;
 #define REGISTER_REQUEST_T_SIZE (int)sizeof(register_request_t)
 
+/** Node status change request. */
+typedef struct {
+    node_status_e nodeStatus;
+} status_request_t;
+#define STATUS_REQUEST_T_SIZE (int)sizeof(status_request_t)
+
 #endif // __IJAM_H

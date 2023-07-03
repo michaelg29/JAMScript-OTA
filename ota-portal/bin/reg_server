@@ -38,16 +38,14 @@ const server = tcp.startServer(process.env.REG_SERVER_PORT, undefined, (sock, da
         // validate network registration
         network.getNetwork(req.networkId)
             .then(([networkObj, _]) => {
-                if (!networkObj) {
+                if (!networkObj || networkObj.regKey !== req.networkRegKey) {
                     errors.error(404, "network");
                 }
 
-                if (networkObj.regKey !== req.networkRegKey) {
-                    errors.error(401, "regkey");
-                }
-                let username = networkObj.username;
+                // determine the UUID
 
                 // create node entry
+                let username = networkObj.username;
                 let uuid = req.nodeId == ijam.emptyUUID ? ijam.createUUID() : req.nodeId;
                 node.obj.create(uuid, req.networkId, username, "node", req.nodeType, req.nodeKey.toString("hex"))
                     .then(() => {
