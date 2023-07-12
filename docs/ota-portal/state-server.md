@@ -17,5 +17,7 @@ The registration server accepts state transition requests from nodes, encrypted 
 1. If the transition was to a loading state, asynchronously execute the [Jxe Loader Program](./jxe-loader.md), giving it the node's id that is now ready to be loaded into.
 1. Return success as status 200 as per [the Node encryption protocol](../node.md#responses-from-the-server-to-the-node).
 
+![Sequence diagram](../media/drawio/ijam-state-server.svg)
+
 ## Schema description
 ### Decrypted request body

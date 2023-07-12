@@ -14,4 +14,6 @@ The certificate server accepts requests from a node client for the public certif
 1. Receive request. Ensure only 4 bytes were sent then read the bytes as a hex string.
 1. If the hex string matches the magic value, return the public key stored in `$RSA_CERT_PATH`. Otherwise terminate the socket without an error message.
 
+![Sequence diagram](../media/drawio/ijam-cert-server.svg)
+
 ## Schema description

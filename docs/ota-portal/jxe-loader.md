@@ -21,6 +21,8 @@ The JXE loader program sends jxe files to nodes to be run on the node. Construct
 1. Construct a program metadata packet as per [the schema](#program-metadata), and send it to the node. Wait for a 200 response.
 1. Read the Jxe file in blocks of size specified by the command line argument. Send each block in a packet as per [the schema](#program-block), and send it to the node. Wait for a 200 response. If a 400 response is received, re-send the packet. If three (3) 400 responses are received, terminate the program.
 
+![Sequence diagram](../media/drawio/ijam-jxe-loader.svg)
+
 ## Schema description
 ### Program metadata
 ### Program block

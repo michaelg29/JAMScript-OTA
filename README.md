@@ -4,6 +4,9 @@
     * store version on node, request a new one if updated
     * determine what files are needed
 * node program loading
+* single use registration key
+    * do not hardcode in header file
+    * enter through prompt
 
 ## Setting up
 ### Create `.env` file
