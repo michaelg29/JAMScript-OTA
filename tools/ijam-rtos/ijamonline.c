@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <signal.h>
 
 /** OpenSSL includes. */
 #include <openssl/ossl_typ.h>
@@ -26,9 +27,15 @@
 #include "ijam_util.h"
 
 #define BUF_SIZE 1024
+#define MAX_INVALID_MSG_COUNTER 16
 
 int clientSock;
 int servSock;
+int connectedClientSock;
+
+struct sockaddr_in serv_addr;
+struct sockaddr_in client_addr;
+socklen_t addr_size;
 
 register_request_t node;
 static unsigned char buffer[BUF_SIZE];
@@ -40,25 +47,17 @@ void closeMsg(const char *msg) {
     if (msg) {
         printf("%s\n", msg);
     }
-    if (clientSock > 0) {
-        close(clientSock);
-    }
-    if (servSock > 0) {
-        close(servSock);
-    }
+    closeSock(&clientSock);
+    closeSock(&connectedClientSock);
+    closeSock(&servSock);
     exit(0);
-}
-
-/** Kill the program. */
-void kill() {
-    closeMsg(NULL);
 }
 
 /** Send `buffer` to the socket. */
 int sendBuffer(int sock, int n) {
     if (send(sock, buffer, n, 0) != n) {
         printf("Could not send %d bytes.\n", n);
-        kill();
+        closeMsg(NULL);
     }
     return n;
 }
@@ -114,14 +113,59 @@ void updateStatus(node_status_e status) {
     printf("Status: %d\n", retStatus);
     if (retStatus != 200) {
         printf("Error: %s\n", buffer + cursor);
-        kill();
+        closeMsg(NULL);
     }
 
     // close connection
     closeSock(&clientSock);
 }
 
+void createListener(int port) {
+    // create socket
+    if ((servSock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+        closeMsg("Could not create listener socket.");
+    }
+
+    printf("Server socket created.\n");
+
+    // bind socket
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family = PF_INET;
+    serv_addr.sin_port = htons(port);
+    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr_size = sizeof(serv_addr);
+    if ((bind(servSock, (struct sockaddr *)&serv_addr, addr_size)) < 0) {
+        closeMsg("Could not bind listener socket.");
+    }
+
+    printf("Server socket bound.\n");
+
+    // listen on port
+    if (listen(servSock, 10) == -1) {
+        closeMsg("Could not start listener.");
+    }
+
+    printf("Server socket listening on port %d.", port);
+}
+
+void sendStatus(int sock, short status) {
+    printf("Sending status %d.\n", status);
+    ((short*)buffer)[0] = status;
+    sendBuffer(sock, (int)sizeof(short));
+}
+
+static void sigIntHandler(int sig) {
+    //updateStatus(offline);
+    closeMsg("Interrupted.");
+}
+
 int main(int argc, char *argv[]) {
+    int recvBytes, decBytes;
+
+    if (signal(SIGINT, sigIntHandler) == SIG_ERR) {
+        closeMsg("Error! Could not bind the signal handlers\n");
+    }
+
     // try to read existing node information
     int bytes_read = read_reg_info(&node);
     if (!bytes_read) {
@@ -132,27 +176,103 @@ int main(int argc, char *argv[]) {
     // === Send online request ===
     // ===========================
 
-    updateStatus(online);
+    updateStatus(OFFLINE);
+    updateStatus(ONLINE);
 
     // ======================
     // === Start listener ===
     // ======================
 
-    //updateStatus(loading);
+    if ((servSock = createListenerSocket(OTA_ONLINE_PORT, STR(OTA_ONLINE_PORT))) < 0) {
+        closeMsg("Could not create listener socket.\n");
+    }
 
-    // revert to previous version
+    bool loading = false;
+    int invalidMsgCounter = 0;
+    int fileSize, fileCursor;
 
-    // jxe error detection
+    while (true) {
+        printf("Listening on port %d for a connection.\n", OTA_ONLINE_PORT);
 
-    //if (!aes_decrypt()) {
-        // notify control center of bad file
-    //}
+        if ((connectedClientSock = accept(servSock, (struct sockaddr *)&client_addr, &addr_size)) < 0) {
+            closeMsg("Could not accept a connection.\n");
+        }
+
+        printf("Connection accepted from %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
+        while (true) {
+#define SEND_STATUS(status) sendStatus(connectedClientSock, status); continue;
+            // receive encrypted buffer
+            recvBytes = receiveBuffer(connectedClientSock);
+            if (!recvBytes) {
+                break;
+            }
+
+            printf("\n\n\nReceived %d bytes.\n", recvBytes);
+
+            // decrypt request
+            decBytes = aes_decrypt(buffer, recvBytes, buffer2, BUF_SIZE, node.nodeKey);
+            int cursor = 16; // skip IV
+            printf("Decrypted %d bytes.\n", decBytes);
+
+            if (!decBytes) {
+                invalidMsgCounter++;
+                if (invalidMsgCounter >= MAX_INVALID_MSG_COUNTER) {
+                    sendStatus(connectedClientSock, 302);
+                }
+
+                // send error
+                printf("Invalid message %d.", invalidMsgCounter);
+                SEND_STATUS(400);
+            }
+            else {
+                invalidMsgCounter = 0;
+            }
+
+            if (!loading) {
+                // get file size
+                fileSize = ((int*)(buffer2 + cursor))[0];
+                fileCursor = 0;
+                printf("Clearing JXE\n\n\n");
+                clear_jxe();
+                printf("Updating status to LOADING\n\n\n");
+                updateStatus(LOADING);
+
+                loading = true;
+                printf("Prepared to load program of size %d\n", fileSize);
+            }
+            else {
+                // write bytes into file
+                printf("Received %d bytes, writing to file at %d.\n", decBytes, fileCursor);
+                if (fileCursor >= fileSize || ((int*)(buffer2 + cursor))[0] == 0) {
+                    printf("Received all bytes.\n");
+                    SEND_STATUS(200);
+                    break;
+                }
+                else {
+                    int n = save_jxe(buffer2 + cursor, fileCursor, decBytes - cursor);
+                    if (n) {
+                        fileCursor += n;
+                        printf("Wrote %d bytes, cursor at %d.\n", n, fileCursor);
+                    }
+                    else {
+                        printf("Could not write.");
+                        SEND_STATUS(500);
+                    }
+                }
+            }
+
+            SEND_STATUS(200);
+        }
+
+        closeSock(&connectedClientSock);
+    }
 
     // ============================
     // === Send offline request ===
     // ============================
 
-    //updateStatus(offline);
+    updateStatus(OFFLINE);
 
     // close
     closeMsg("Connection closed.");

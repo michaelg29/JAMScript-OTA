@@ -243,7 +243,7 @@ const transitionNodeLoading = async function(nodeId, nodeObj) {
  * @param {object} nodeObj Node object.
  */
 const transitionNodeOffline = async function(nodeId, nodeObj) {
-    validateNodeTransition(nodeObj, statuses.OFFLINE, [statuses.ONLINE, statuses.LOADING]);
+    validateNodeTransition(nodeObj, statuses.OFFLINE, [statuses.OFFLINE, statuses.ONLINE, statuses.LOADING]);
 
     await offlineNodeObj(nodeId);
 }

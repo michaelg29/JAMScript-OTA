@@ -1,0 +1,117 @@
+#!/usr/bin/env node
+/**
+ * Server to respond to node status changes.
+ */
+
+const errors = require("./../utils/httperror");
+const fs = require("fs");
+const ijam = require("../utils/ijam_types");
+const node = require("./../utils/node");
+const tcp = require("../utils/tcp");
+
+function killProgram(...data) {
+    console.error(data);
+    process.exit(1);
+}
+
+// Parameters
+const nodeId = "774bb166-1080-4e2b-906e-0aa02d882e12";
+const program = "clear_redis_nodes";
+const blockSize = 128 - 2;
+
+// Parse command line arguments
+for (let i = 0; i < process.argv.length - 1; ++i) {
+    let val = process.argv[i + 1];
+    switch (process.argv[i]) {
+        case "--nodeid":
+            nodeId = val;
+            break;
+        case "--prog":
+            program = val;
+            break;
+        case "--blksize":
+            blockSize = Number.parseInt(val);
+            break;
+    }
+}
+
+// validate program
+let fileSize = 0;
+try {
+    fileSize = fs.statSync(program).size;
+} catch (e) {
+    console.log(e);
+}
+
+if (fileSize == 0) {
+    console.log("Could not find program or program is empty.");
+}
+
+console.log("Loading", program, "to", nodeId, "in blocks of", blockSize, "bytes");
+
+// Validate request
+node.getNode(nodeId)
+    .then(([nodeObj, _]) => {
+        // program loading status
+        let done = false;
+        let cursor = -blockSize; // offset for first addition
+        let fd = fs.openSync(program, "r");
+        let fileBuf = Buffer.alloc(blockSize);
+
+        // node parameters
+        const encKey = Buffer.from(nodeObj.encKey, "hex");
+        const ip = !!process.env.DOCKER ? "host.docker.internal" : nodeObj.ip;
+
+        console.log("File size", fileSize);
+
+        const client = tcp.startClient(ip, process.env.OTA_ONLINE_PORT, () => {
+            // request the node transitions to loading
+            let lengthBuf = Buffer.alloc(4);
+            lengthBuf.writeInt32LE(fileSize);
+            tcp.encryptAndSend(client, undefined, encKey, lengthBuf);
+        }).on("data", (data) => {
+            console.log("\n\nReceived", data.byteLength, "bytes");
+            // validate response
+            if (data.byteLength != 2) {
+                client.end();
+                return;
+            }
+
+            // check status
+            let status = data.readInt16LE(0);
+            if (status == 200) {
+                cursor += blockSize;
+            }
+            else if (status == 302) {
+                console.log("Too many error responses, must retry program execution.");
+            }
+            else {
+                console.log("Received status code", status, "retrying at cursor", cursor);
+            }
+
+            if (done) {
+                // close client connection
+                console.log("Done");
+                client.end();
+                return;
+            }
+
+            if (cursor < fileSize) {
+                // send file block
+                let bytesRead = fs.readSync(fd, fileBuf, 0, blockSize);
+                tcp.encryptAndSend(client, undefined, encKey, fileBuf.subarray(0, bytesRead));
+            }
+            else {
+                // send done message
+                let doneBuf = Buffer.alloc(4);
+                doneBuf.writeInt32LE(0);
+                tcp.encryptAndSend(client, undefined, encKey, doneBuf);
+                done = true;
+            }
+        }).on("end", () => {
+            process.exit(0);
+        });
+    })
+    .catch((error) => {
+        killProgram(error);
+    });

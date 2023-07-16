@@ -4,9 +4,11 @@
     * store version on node, request a new one if updated
     * determine what files are needed
 * node program loading
-* single use registration key
+    * version control
+    * revert to previous version if program corrupted
+* single use registration key (list for each network)
     * do not hardcode in header file
-    * enter through prompt
+    * enter through prompt in ijamreg
 
 ## Setting up
 ### Create `.env` file

@@ -4,6 +4,9 @@
 
 #define IJAM_DEBUG 1 // comment out to silence most printf statements
 
+#define STR_IMPL_(x) #x      //stringify argument
+#define STR(x) STR_IMPL_(x)  //indirection to expand argument macros
+
 /** Magic value to send to the certificate server for validation. */
 #define CERT_REQ_MAGIC 0x8c124d3f
 
@@ -12,6 +15,8 @@
 #define OTA_CERT_PORT 8444
 #define OTA_REG_PORT 8445
 #define OTA_STAT_PORT 8446
+
+#define OTA_ONLINE_PORT 8440
 
 /** Boolean. */
 typedef char bool;
@@ -26,16 +31,16 @@ typedef struct {
 
 /** Node types. */
 typedef enum {
-    device = 0b001,
-    fog =    0b010,
-    cloud =  0b100,
+    DEVICE = 0b001,
+    FOG =    0b010,
+    CLOUD =  0b100,
 } node_type_e;
 
 /** Node statuses. */
 typedef enum {
-    online  = 0b001,
-    loading = 0b010,
-    offline = 0b100,
+    ONLINE  = 0b001,
+    LOADING = 0b010,
+    OFFLINE = 0b100,
 } node_status_e;
 
 /** Standard length of the network registration key. */

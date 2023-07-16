@@ -49,14 +49,40 @@ const startServer = function(port, dataCallback = undefined, sockDataCallback = 
 };
 
 /**
- * Send a registration response to the client.
+ * Start a TCP client socket.
+ * @param {string} ip   The server IP to connect to.
+ * @param {number} port The server port to connect to.
+ * @param {() => void} startupFunction The function to call after connection.
+ * @returns {net.Socket} The client object.
+ */
+const startClient = function(ip, port, startupFunction) {
+    console.log("Attempting to connect to", ip, port);
+    const client = new net.Socket();
+    
+    client.connect({
+        host: ip,
+        port: port,
+    }, () => {
+        console.log("Connection established.");
+        startupFunction();
+    });
+
+    client.on("end", () => {
+        console.log("Connection terminated.");
+    })
+
+    return client;
+}
+
+/**
+ * Send a message to a socket.
  * @param {net.Socket} sock The client socket.
- * @param {number} status   The HTTP status of the response.
+ * @param {number} status   The HTTP status of the response, undefined if a request.
  * @param {Buffer[]} data   The data.
  * @returns The number of bytes sent to the client.
  */
-const sendResponse = function(sock, status, ...data) {
-    let finalLength = 2;
+const sendMsg = function(sock, status, ...data) {
+    let finalLength = !!status ? 2 : 0;
     for (let buf of data) {
         finalLength += buf.byteLength;
     }
@@ -64,13 +90,15 @@ const sendResponse = function(sock, status, ...data) {
     let array = new Uint8Array(finalLength);
 
     // write status as little endian
-    array[0] = (status >> 0) & 0xff;
-    array[1] = (status >> 8) & 0xff;
+    let cursor = 0;
+    if (!!status) {
+        array[cursor] = (status >> 0) & 0xff;
+        array[cursor + 1] = (status >> 8) & 0xff;
+        cursor += 2;
+    }
 
     // copy data
-    let cursor = 2;
     for (let buf of data) {
-        console.log(cursor, buf.toString("hex"));
         buf.copy(array, cursor);
         cursor += buf.byteLength;
     }
@@ -87,7 +115,7 @@ const sendResponse = function(sock, status, ...data) {
  */
 const sendError = function(sock, error) {
     console.log("error", error);
-    sendResponse(sock, error.statusCode || 500, Buffer.from(error.message || "Error"));
+    sendMsg(sock, error.statusCode || 500, Buffer.from(error.message || "Error"));
 }
 
 const aes_alg = "aes-256-cbc";
@@ -111,15 +139,25 @@ const encryptAndSend = function(sock, status, key, data) {
     }
     checksumBuf.writeUInt8(checksum, 0);
 
-    console.log("data", data);
+    // compute padding
+    let paddedLength = data.byteLength + 2; // plaintext, checksum (1 byte), padding (>= 1 byte)
+    paddedLength += paddedLength % 16 ? 16 - (paddedLength % 16) : 0;
+    let padding = paddedLength - data.byteLength - 1;
+    let paddingBuf = Buffer.alloc(padding);
+    for (let i = 0; i < padding; ++i) {
+        paddingBuf.writeUInt8(padding, i);
+    }
 
     // encrypt the data
+    console.log("Encrypting", data.byteLength, " bytes with checksum", checksumBuf.toString("hex"));
     let alg = crypto.createCipheriv(aes_alg, key, ivBytes);
+    alg.setAutoPadding(false);
     let enc = alg.update(data, "utf-8", "hex");
     enc += alg.update(checksumBuf, "utf-8", "hex");
+    enc += alg.update(paddingBuf, "utf-8", "hex");
     enc += alg.final("hex");
 
-    sendResponse(sock, status, ivBytes, Buffer.from(enc, "hex"));
+    sendMsg(sock, status, ivBytes, Buffer.from(enc, "hex"));
 }
 
 /**
@@ -145,21 +183,23 @@ const decryptMessage = function(buf, key, cursor = 0) {
     let padding = decBuf.readUInt8(decBuf.byteLength - 1);
 
     // verify checksum
-    let expectedChecksum = decBuf.readUInt8(decBuf.byteLength - padding);
+    let plaintextLen = decBuf.byteLength - padding - 1;
+    let expectedChecksum = decBuf.readUInt8(plaintextLen);
     let actualChecksum = 0;
-    for (let i = 0; i < decBuf.byteLength - padding; ++i) {
+    for (let i = 0; i < plaintextLen; ++i) {
         actualChecksum ^= decBuf.readUInt8(i);
     }
     if (actualChecksum != expectedChecksum) {
         return undefined;
     }
 
-    return decBuf.subarray(0, -padding);
+    return decBuf.subarray(0, plaintextLen);
 }
 
 module.exports = {
     startServer: startServer,
-    sendResponse: sendResponse,
+    startClient: startClient,
+    sendMsg: sendMsg,
     sendError: sendError,
     encryptAndSend: encryptAndSend,
     decryptMessage: decryptMessage,

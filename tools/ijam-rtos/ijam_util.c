@@ -4,14 +4,17 @@
 /** Standard includes. */
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 /** OpenSSL includes. */
 #include <openssl/aes.h>
 
 /** Socket includes. */
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
 void closeSock(int *sock) {
     if (sock && *sock) {
@@ -92,18 +95,69 @@ int connectToListener(const char *ip, short port) {
     return sock;
 }
 
+int createListenerSocket(short port, const char *port_str) {
+    int serv_sock;
+    struct addrinfo hints, *servinfo, *p;
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    // get possible bind points
+    if (getaddrinfo(NULL, port_str, &hints, &servinfo) != 0) {
+        printf("getaddrinfo error");
+        return -1;
+    }
+
+    // try and bind to each result
+    for (p = servinfo; p != NULL; p = p->ai_next) {
+        // create socket
+        if ((serv_sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+            printf("socket error\n");
+            continue;
+        }
+
+        // setsockopt
+        int optval;
+        if (setsockopt(serv_sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) != 0) {
+            printf("setsockopt error\n");
+            return -1;
+        }
+
+        // bind
+        if (bind(serv_sock, p->ai_addr, p->ai_addrlen) == -1) {
+            close(serv_sock);
+            printf("server bind error\n");
+            continue;
+        }
+
+        break;
+    }
+
+    printf("%d\n", serv_sock);
+
+    if (listen(serv_sock, 10) == -1) {
+        close(serv_sock);
+        printf("listen error");
+        return -1;
+    }
+
+    return serv_sock;
+}
+
 int aes_encrypt(unsigned char *plaintext, int len, int maxInLen, unsigned char *enc, int maxOutLen, unsigned char *key) {
     // pad length to allow for a complete final block
-    int paddedLength = len + 2; // plaintext, checksum (1 byte), padding (1 byte)
+    int paddedLength = len + 2; // plaintext, checksum (1 byte), padding (>= 1 byte)
     paddedLength += paddedLength % 16 ? 16 - (paddedLength % 16) : 0;
 
     // validate input and output sizes
     if (len <= 0 || paddedLength > maxOutLen || paddedLength > maxInLen) return 0;
 
     // add padding
-    int padding = paddedLength - len;
+    int padding = paddedLength - len - 1;
     if (len < paddedLength) {
-        memset(plaintext + len, padding, padding);
+        memset(plaintext + len + 1, padding, padding);
     }
 
     // compute checksum
@@ -170,8 +224,17 @@ int aes_decrypt(unsigned char *enc, int len, unsigned char *dec, int maxOutLen, 
     AES_cbc_encrypt(enc, dec, (size_t)len, &aesKey, enc, AES_DECRYPT);
 
     // account for padding
-    int checksumIdx = len - dec[len - 1] + 1;
+    int checksumIdx = len - dec[len - 1] - 1;
     unsigned char expectedChecksum = dec[checksumIdx];
+    printf("%02x padding => checksum at idx %d (value of %02x)", dec[len - 1], checksumIdx, expectedChecksum);
+
+#ifdef IJAM_DEBUG
+    printf("\nPlaintext:\n");
+    for (int i = 0; i < len; ++i) {
+        printf("%02x", dec[i] & 0xff);
+    }
+    printf("\n");
+#endif
 
     // compute checksum
     unsigned char actualChecksum = 0;
@@ -181,14 +244,6 @@ int aes_decrypt(unsigned char *enc, int len, unsigned char *dec, int maxOutLen, 
     if (actualChecksum != expectedChecksum) {
         return 0;
     }
-
-#ifdef IJAM_DEBUG
-    printf("\nPlaintext:\n");
-    for (int i = 0; i < len; ++i) {
-        printf("%02x", dec[i] & 0xff);
-    }
-    printf("\n");
-#endif
 
     return checksumIdx;
 }
@@ -229,6 +284,28 @@ int read_reg_info(register_request_t *reg_info) {
             memset(reg_info, 0, REGISTER_REQUEST_T_SIZE);
         }
 
+        fclose(fp);
+    }
+
+    return n;
+}
+
+bool clear_jxe() {
+    FILE *fp = fopen("prog.jxe.bkp", "wb");
+    if (fp) {
+        fclose(fp);
+        return true;
+    }
+
+    return false;
+}
+
+int save_jxe(unsigned char *buffer, int outCursor, int size) {
+    int n = 0;
+    FILE *fp = fopen("prog.jxe.bkp", "ab");
+    if (fp) {
+        fseek(fp, outCursor, SEEK_SET);
+        n = fwrite(buffer, (size_t)1, (size_t)size, fp);
         fclose(fp);
     }
 

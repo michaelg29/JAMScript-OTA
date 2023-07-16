@@ -33,6 +33,14 @@ void parseHex(char *hexStr, int numBytes, unsigned char *bytes);
 int connectToListener(const char *ip, short port);
 
 /**
+ * Create a TCP listener.
+ * @param port      The port of the listener.
+ * @param port_str  The port of the listener as a string.
+ * @returns         The file descriptor (fd) for the created socket, -1 if not created.
+ */
+int createListenerSocket(short port, const char *port_str);
+
+/**
  * Encrypt a message using AES-256-CBC.
  * @param plaintext The plaintext message with the IV as the first 16 bytes.
  * @param len       The length of the message plus 16 bytes for the IV.
@@ -68,5 +76,20 @@ int save_reg_info(register_request_t *reg_info);
  * @returns         The number of bytes read.
  */
 int read_reg_info(register_request_t *reg_info);
+
+/**
+ * Clear the existing saved program.
+ * @returns         Whether the program was cleared.
+ */
+bool clear_jxe();
+
+/**
+ * Write the received program starting at an offset.
+ * @param buffer    The buffer to write into the file.
+ * @param outCursor The location to start writing at.
+ * @param size      The number of bytes to write.
+ * @returns         The number of bytes written.
+ */
+int save_jxe(unsigned char *buffer, int outCursor, int size);
 
 #endif // __IJAM_UTIL_H

@@ -12,6 +12,6 @@
 /** The network registration key. */
 #define NETWORK_REG_KEY "a76ca6bab2f5c570d6eaccb05857aa0775f9cdd65cf9e8efedf717df41f4f2fe"
 /** The node type (device|fog|cloud). */
-#define NODE_TYPE device
+#define NODE_TYPE DEVICE
 
 #endif // __NODE_PARAMS_H

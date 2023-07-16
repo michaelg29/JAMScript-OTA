@@ -32,6 +32,7 @@ const server = tcp.startServer(process.env.STATE_SERVER_PORT, undefined, (sock, 
 
                 // validate and execute requested transition
                 let nodeStatus = ijam.parseNodeStatusRequest(dec);
+                console.log("Requested status", nodeStatus.nodeStatus, "current status", nodeObj.status);
                 switch (nodeStatus.nodeStatus) {
                     case ijam.node.statuses.ONLINE:
                         promise = node.transition.online(nodeId, nodeObj, sock.address().address);
@@ -52,7 +53,7 @@ const server = tcp.startServer(process.env.STATE_SERVER_PORT, undefined, (sock, 
                             console.log("Start program load for node", nodeId);
                         }
 
-                        tcp.sendResponse(sock, 200);
+                        tcp.sendMsg(sock, 200);
                     })
                     .catch((error) => {
                         tcp.sendError(sock, error);
