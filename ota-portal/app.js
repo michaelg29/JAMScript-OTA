@@ -7,7 +7,6 @@ const errors = require("./utils/httperror");
 const auth = require("./routes/auth");
 const nodesRouter = require("./routes/nodes");
 const nodeAuthRouter = require("./routes/nodeAuth");
-const nodeUnauthRouter = require("./routes/nodeUnauth");
 const networksRouter = require("./routes/networks");
 
 var app = express();
@@ -27,9 +26,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
-
-// unauthorized requests
-app.use("/nodes", nodeUnauthRouter);
 
 // authorization
 app.use(auth);

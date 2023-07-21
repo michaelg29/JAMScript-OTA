@@ -1,6 +1,5 @@
 const errors = require("./httperror");
 const rclient = require("./redis-client");
-const keys = require("./keys");
 
 const ijam_types = require("./ijam_types");
 const types = ijam_types.node.types;

@@ -1,5 +1,4 @@
-
-const keys = require("./keys");
+const passphrases = require("./network_passphrase");
 
 const nodeKeyLen = 32; // AES-256-CBC
 
@@ -55,7 +54,7 @@ const readUUID = function(bytes, offset = 0, delimeter = '-') {
  */
 const parseRegisterRequest = function(buf) {
     // length = nodeId (uuid) + networkId (uuid) + networkRegKey + nodeKey + node type (int) + checksum (int)
-    let regReqLen = 16 + 16 + keys.regKeyLen + nodeKeyLen + 4 + 4;
+    let regReqLen = 16 + 16 + passphrases.maxPassphraseLength + nodeKeyLen + 4 + 4;
     if (buf.byteLength != regReqLen) {
         console.log(buf.byteLength, regReqLen);
         throw "Invalid length";
@@ -72,11 +71,9 @@ const parseRegisterRequest = function(buf) {
     cursor += 16
 
     // read networkRegKey
-    let networkRegKey = buf.subarray(cursor, cursor + keys.regKeyLen);
-    cursor += keys.regKeyLen;
-    if (!keys.validateKeyBuf(networkRegKey)) {
-        throw "Invalid key.";
-    }
+    let networkPassphrase = buf.subarray(cursor, cursor + passphrases.maxPassphraseLength);
+    cursor += passphrases.maxPassphraseLength;
+    passphrases.validateNetworkPassphraseBuf(networkPassphrase);
 
     let nodeKey = buf.subarray(cursor, cursor + nodeKeyLen);
     cursor += nodeKeyLen;
@@ -99,7 +96,7 @@ const parseRegisterRequest = function(buf) {
     return {
         nodeId: nodeId,
         networkId: networkId,
-        networkRegKey: networkRegKey.toString("hex"),
+        networkPassphrase: networkPassphrase.toString("utf-8"),
         nodeKey: nodeKey,
         nodeType: nodeType,
     };

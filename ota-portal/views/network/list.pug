@@ -25,12 +25,15 @@ block content
           td #{value.name}
           td #{value.createdOn}
           td
-            a(href="/networks/" + key + "/ijamreg.sh" download) Register
+            a(href="/networks/" + key + "/node") Register
             input(type="submit", value="Delete Network", class="revoke-network", onclick="deleteNetwork('" + key + "')")
             a(href="/nodes?network-id=" + key) See nodes
 
   h2 Create a new network
   div
+    p
+      | ID:
+      input(type="text", name="id", id="create-network-id")
     p
       | Name:
       input(type="text", name="name", id="create-network-name")

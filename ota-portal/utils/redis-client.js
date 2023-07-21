@@ -48,6 +48,14 @@ async function getObj(key) {
     return await execute("hgetall", [key]);
 }
 
+async function getObjField(key, field) {
+    return await execute("hget", [key, field]);
+}
+
+async function delObjField(key, field) {
+    return await execute("hdel", [key, field]);
+}
+
 async function del(key) {
     return await execute("del", [key]);
 }
@@ -74,6 +82,8 @@ module.exports = {
     setObj: setObj,
     setObjOrThrow: setObjOrThrow,
     getObj: getObj,
+    getObjField: getObjField,
+    delObjField: delObjField,
     del: del,
     addToSet: addToSet,
     isInSet: isInSet,

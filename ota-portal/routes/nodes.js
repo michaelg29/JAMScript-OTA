@@ -47,7 +47,7 @@ async function filterNodeEntries(req, networkIds) {
             }
         }
 
-        let [networkObj, networkKey] = await network.getNetwork(networkId);
+        let [networkObj, _] = await network.getNetwork(networkId);
         let [err, nodeIds] = await rclient.getSetMembers(node.networkNodesKey(networkId));
 
         for (let nodeId of nodeIds) {

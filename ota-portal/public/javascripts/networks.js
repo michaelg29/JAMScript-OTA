@@ -1,8 +1,10 @@
 
 async function createNetwork() {
+    const netId = document.querySelector("#create-network-id").value;
     const name = document.querySelector("#create-network-name").value;
 
     var res = await dataRequest("POST", "networks", undefined, {
+        "id": netId,
         "name": name
     });
     

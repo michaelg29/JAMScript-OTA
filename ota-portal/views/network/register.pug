@@ -1,0 +1,19 @@
+extends ../layout
+
+block content
+  h1 Register a node for a network
+
+  form(method="post")
+    p
+      | Node name:
+      input(type="text", name="name", id="node-reg-name")
+    p
+      | Passphrase:
+      input(type="password", name="pass", id="node-reg-passphrase")
+
+    input(type="submit", value="Register node")
+
+    p(class="error-msg", id="register-node-error") #{message}
+
+  script(src="/javascripts/api.js")
+  script(src="/javascripts/networks.js")
