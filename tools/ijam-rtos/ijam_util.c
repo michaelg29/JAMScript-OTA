@@ -248,22 +248,22 @@ int aes_decrypt(unsigned char *enc, int len, unsigned char *dec, int maxOutLen, 
     return checksumIdx;
 }
 
-unsigned int calc_checksum(register_request_t *reg_info) {
-    unsigned int *buf = (int*)reg_info;
+unsigned int calc_checksum(node_info_t *node_info) {
+    unsigned int *buf = (int*)node_info;
     unsigned int checksum = 0;
-    for (int i = 0; i < (REGISTER_REQUEST_T_SIZE >> 2) - 1; ++i) {
+    for (int i = 0; i < (NODE_INFO_T_SIZE >> 2) - 1; ++i) {
         checksum ^= buf[i];
     }
     return checksum;
 }
 
-int save_reg_info(register_request_t *reg_info) {
+int save_node_info(node_info_t *node_info) {
     int n = 0;
     FILE *fp = fopen(".env", "wb");
     if (fp) {
-        reg_info->checksum = calc_checksum(reg_info);
+        node_info->checksum = calc_checksum(node_info);
 
-        n = fwrite(reg_info, 1, REGISTER_REQUEST_T_SIZE, fp);
+        n = fwrite(node_info, 1, NODE_INFO_T_SIZE, fp);
 
         fclose(fp);
     }
@@ -271,17 +271,17 @@ int save_reg_info(register_request_t *reg_info) {
     return n;
 }
 
-int read_reg_info(register_request_t *reg_info) {
+int read_node_info(node_info_t *node_info) {
     int n = 0;
     FILE *fp = fopen(".env", "rb");
     if (fp) {
-        n = fread(reg_info, 1, REGISTER_REQUEST_T_SIZE, fp);
+        n = fread(node_info, 1, NODE_INFO_T_SIZE, fp);
 
         // If data not read or checksum not valid, clear memory
-        if (!(n == REGISTER_REQUEST_T_SIZE &&
-            calc_checksum(reg_info) == reg_info->checksum)) {
+        if (!(n == NODE_INFO_T_SIZE &&
+            calc_checksum(node_info) == node_info->checksum)) {
             n = 0;
-            memset(reg_info, 0, REGISTER_REQUEST_T_SIZE);
+            memset(node_info, 0, NODE_INFO_T_SIZE);
         }
 
         fclose(fp);
@@ -310,4 +310,19 @@ int save_jxe(unsigned char *buffer, int outCursor, int size) {
     }
 
     return n;
+}
+
+int get_console_input(unsigned char *buffer, int maxSize) {
+    int curInputSize = 0;
+
+    fgets(buffer, maxSize, stdin);
+    for (int i = 0; i < maxSize; ++i) {
+        if (buffer[i] < 32 || buffer[i] > 126) {
+            buffer[i] = 0;
+            curInputSize = i;
+            break;
+        }
+    }
+
+    return curInputSize;
 }

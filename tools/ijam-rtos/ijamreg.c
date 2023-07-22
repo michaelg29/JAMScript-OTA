@@ -27,7 +27,6 @@
 /** IJAM includes. */
 #include "ijam.h"
 #include "ijam_util.h"
-#include "node_params.h"
 
 #define BUF_SIZE 1024
 #define KEY_SIZE 800
@@ -37,6 +36,13 @@ int sock;
 static unsigned char buffer[BUF_SIZE];
 static unsigned char err[BUF_SIZE];
 static unsigned char key[KEY_SIZE + 1];
+
+//#define USE_DEFAULT_NET_CREDENTIALS
+#define DEF_NETWORK_ID "network"
+#define DEF_NETWORK_ID_LEN strlen(DEF_NETWORK_ID)
+#define DEF_NETWORK_PHRASE "asdf"
+#define DEF_NETWORK_PHRASE_LEN strlen(DEF_NETWORK_PHRASE)
+#define DEF_NODE_TYPE 'd'
 
 /** Kill the program with a message. */
 void closeMsg(const char *msg) {
@@ -132,24 +138,49 @@ int main(int argc, char *argv[]) {
     srand(time(0));
 
     // try to read existing node information
-    register_request_t node;
-    int bytes_read = read_reg_info(&node);
+    node_info_t node;
+    register_request_t reg_req;
+    int bytes_read = read_node_info(&node);
     if (!bytes_read) {
         // initialize node information
-        memset(node.nodeId.bytes, 0, UUID_SIZE);
-        parseHex(NETWORK_ID, UUID_SIZE, node.networkId.bytes);
-        parseHex(NETWORK_REG_KEY, REG_KEY_LEN, node.networkRegKey);
-        node.nodeType = NODE_TYPE;
+        memset(reg_req.nodeId.bytes, 0, UUID_SIZE);
+        reg_req.nodeType = DEVICE;
+    }
+    else {
+        // copy existing node information
+        memcpy(reg_req.nodeId.bytes, node.nodeId.bytes, UUID_SIZE);
+        reg_req.nodeType = node.nodeType;
+    }
+
+    // set network credentials
+#ifdef USE_DEFAULT_NET_CREDENTIALS
+    memcpy(reg_req.networkId, DEF_NETWORK_ID, DEF_NETWORK_ID_LEN);
+    memcpy(reg_req.networkPhrase, DEF_NETWORK_PHRASE, DEF_NETWORK_PHRASE_LEN);
+    reg_req.nodeType = DEF_NODE_TYPE;
+#else
+    printf("Network ID> ");
+    get_console_input(reg_req.networkId, MAX_NET_ID_LEN);
+    printf("Network passphrase> ");
+    get_console_input(reg_req.networkPhrase, MAX_NET_PHRASE_LEN);
+    printf("Node type (d|f|c)> ");
+    get_console_input((unsigned char*)&reg_req.nodeType, 4);
+#endif
+    
+    // set node type
+    switch ((char)reg_req.nodeType) {
+        case 'c': reg_req.nodeType = CLOUD; break;
+        case 'f': reg_req.nodeType = FOG; break;
+        default:  reg_req.nodeType = DEVICE; break;
     }
 
     // generate random node key
     for (int i = 0; i < NODE_KEY_LEN; ++i) {
-        node.nodeKey[i] = rand() & 0xFF;
+        reg_req.nodeKey[i] = rand() & 0xFF;
     }
 
     // encrypt and send
     unsigned char node_buf[REGISTER_REQUEST_T_SIZE];
-    memcpy(node_buf, &node, REGISTER_REQUEST_T_SIZE);
+    memcpy(node_buf, &reg_req, REGISTER_REQUEST_T_SIZE);
     printf("Sending (%d): ", REGISTER_REQUEST_T_SIZE);
     for (int i = 0; i < REGISTER_REQUEST_T_SIZE; ++i) {
         printf("%02x", node_buf[i] & 0xff);
@@ -191,7 +222,7 @@ int main(int argc, char *argv[]) {
 
     // decrypt
     unsigned char *dec = err; // re-name error buffer
-    int decBytes = aes_decrypt(buffer + cursor, recvBytes - cursor, dec, BUF_SIZE, node.nodeKey);
+    int decBytes = aes_decrypt(buffer + cursor, recvBytes - cursor, dec, BUF_SIZE, reg_req.nodeKey);
     printf("Decrypted %d bytes.\n", decBytes);
     for (int i = 0; i < decBytes; ++i) {
         printf("%02x", dec[i] & 0xff);
@@ -199,11 +230,12 @@ int main(int argc, char *argv[]) {
     printf("\n");
 
     // save node information
-    cursor = 16; // skip IV
-    memcpy(node.nodeId.bytes, dec + cursor, UUID_SIZE);
-    cursor += 16;
+    memcpy(node.nodeId.bytes, dec + 16, UUID_SIZE); // skip IV
+    memcpy(node.networkId, reg_req.networkId, MAX_NET_ID_LEN);
+    memcpy(node.nodeKey, reg_req.nodeKey, NODE_KEY_LEN);
+    node.nodeType = reg_req.nodeType;
     printUUID(node.nodeId);
-    save_reg_info(&node);
+    save_node_info(&node);
 
     // close
     closeMsg("Connection closed.");

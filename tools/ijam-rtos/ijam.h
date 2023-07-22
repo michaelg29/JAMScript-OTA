@@ -43,18 +43,30 @@ typedef enum {
     OFFLINE = 0b100,
 } node_status_e;
 
-/** Standard length of the network registration key. */
-#define REG_KEY_LEN 32
+/** Maximum length of the network ID and registration key. */
+#define MAX_NET_ID_LEN 16
+#define MAX_NET_PHRASE_LEN 16
+
+/** Length of the node encryption key. */
 #define NODE_KEY_LEN 32 // aes-256-cbc
+
+/** Node information structure. */
+typedef struct {
+    uuid_t nodeId;                       // The node uuid.
+    char networkId[MAX_NET_ID_LEN];      // The network uuid.
+    char nodeKey[NODE_KEY_LEN];          // The node encryption key.
+    node_type_e nodeType;                // The node type.
+    unsigned int checksum;               // Checksum to validate persisted data.
+} node_info_t;
+#define NODE_INFO_T_SIZE (int)sizeof(node_info_t)
 
 /** Node registration request structure. */
 typedef struct {
-    uuid_t nodeId;                      // The node uuid.
-    uuid_t networkId;                   // The network uuid.
-    char networkRegKey[REG_KEY_LEN];    // The registration key for the network.
-    char nodeKey[NODE_KEY_LEN];         // The node encryption key.
-    node_type_e nodeType;               // The node type.
-    unsigned int checksum;              // Checksum to validate persisted data.
+    uuid_t nodeId;                          // The node uuid.
+    char networkId[MAX_NET_ID_LEN];         // The network uuid.
+    char networkPhrase[MAX_NET_PHRASE_LEN]; // The passphrase for the network.
+    char nodeKey[NODE_KEY_LEN];             // The node encryption key.
+    node_type_e nodeType;                   // The node type.
 } register_request_t;
 #define REGISTER_REQUEST_T_SIZE (int)sizeof(register_request_t)
 

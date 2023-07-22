@@ -37,7 +37,7 @@ struct sockaddr_in serv_addr;
 struct sockaddr_in client_addr;
 socklen_t addr_size;
 
-register_request_t node;
+node_info_t node;
 static unsigned char buffer[BUF_SIZE];
 static unsigned char buffer2[BUF_SIZE];
 static unsigned char err[BUF_SIZE];
@@ -167,7 +167,7 @@ int main(int argc, char *argv[]) {
     }
 
     // try to read existing node information
-    int bytes_read = read_reg_info(&node);
+    int bytes_read = read_node_info(&node);
     if (!bytes_read) {
         closeMsg("Node information not saved.");
     }

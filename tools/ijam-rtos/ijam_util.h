@@ -64,18 +64,18 @@ int aes_encrypt(unsigned char *plaintext, int len, int maxInLen, unsigned char *
 int aes_decrypt(unsigned char *enc, int len, unsigned char *dec, int maxOutLen, unsigned char *key);
 
 /**
- * Save the registration information for this node.
- * @param reg_info  The registration information structure.
+ * Save the node information for this node.
+ * @param node_info The node information structure.
  * @returns         The number of bytes saved.
  */
-int save_reg_info(register_request_t *reg_info);
+int save_node_info(node_info_t *node_info);
 
 /**
  * Read the stored registration information on the node.
- * @param reg_info  The structure to read data into.
+ * @param node_info The structure to read data into.
  * @returns         The number of bytes read.
  */
-int read_reg_info(register_request_t *reg_info);
+int read_node_info(node_info_t *node_info);
 
 /**
  * Clear the existing saved program.
@@ -91,5 +91,13 @@ bool clear_jxe();
  * @returns         The number of bytes written.
  */
 int save_jxe(unsigned char *buffer, int outCursor, int size);
+
+/**
+ * Receive user keyboard input.
+ * @param buffer    The buffer to write to.
+ * @param maxSize   The maximum number of characters to accept.
+ * @returns         The number of characters entered.
+*/
+int get_console_input(unsigned char *buffer, int maxSize);
 
 #endif // __IJAM_UTIL_H

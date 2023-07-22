@@ -123,14 +123,14 @@ const addNetworkPassphrase = async function(netId, nodeName, passphrase) {
 const matchNetworkPassphrase = async function(netId, passphrase) {
     passphrases.validateNetworkPassphrase(passphrase);
 
-    if (rclient.isInSet(networkPassphrasesKey(netId))) {
+    if (await rclient.isInSet(networkPassphrasesKey(netId), passphrase)) {
         let [err, redisRes] = await rclient.getObjField(networkPassphraseNamesKey(netId), passphrase);
         if (!err && !!redisRes) {
             // delete from database
             await rclient.removeFromSet(networkPassphrasesKey(netId), passphrase);
             await rclient.delObjField(networkPassphraseNamesKey(netId), passphrase);
             let nodeName = redisRes;
-            [err, redisRes] = await getNetwork(netId);
+            [redisRes, _] = await getNetwork(netId);
 
             // return node name
             return [redisRes, nodeName];

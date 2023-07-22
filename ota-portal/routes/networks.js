@@ -9,9 +9,10 @@ const rclient = require("../utils/redis-client");
 const errors = require("../utils/httperror");
 const request = require("../utils/request");
 
+const ijam_types = require("../utils/ijam_types");
 const network = require("../utils/network");
-const node = require("../utils/node");
 const passphrases = require("../utils/network_passphrase");
+const node = require("../utils/node");
 
 /**
  * Create a network.
@@ -20,7 +21,7 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
     const netReq = request.validateBody(req, ["id", "name"]);
 
     // validate ID
-    if (netReq.id.length > 16) {
+    if (netReq.id.length > ijam_types.maxNetworkIdLength) {
         errors.error(400, "Network ID cannot be more than 16 characters.");
     }
 

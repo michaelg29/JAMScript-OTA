@@ -65,7 +65,8 @@ async function addToSet(key, item) {
 }
 
 async function isInSet(key, item) {
-    return await execute("sismember", [key, item]);
+    let [err, num] =  await execute("sismember", [key, item]);
+    return !err && num > 0;
 }
 
 async function getSetMembers(key) {
