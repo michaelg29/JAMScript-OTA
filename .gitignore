@@ -2,8 +2,7 @@
 *node_modules
 *.pem
 *.rdb
-regKey
-nodeId
 *.zip
 *.o
 *.bkp
+.$*

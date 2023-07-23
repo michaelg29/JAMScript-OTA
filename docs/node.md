@@ -4,6 +4,23 @@ title: Node Description
 permalink: /node/
 ---
 
+## Node states
+Nodes can transition between states as shown below.
+
+![Node state diagram](./media/drawio/db-node-state.svg)
+
+### Node registration
+At a high level, node registration looks like the following.
+
+![Registration sequence diagram](./media/drawio/ijam-registration-flow.svg)
+1. asdf
+
+### Node main program
+A node's main process looks like the following.
+
+![Online sequence diagram](./media/drawio/ijam-online-flow.svg)
+1. asdf
+
 ## Node encryption protocol
 ### Requests from the node to the server
 The node must include its ID with the packet so that the server knows which key to use for decryption. The message is constructed as follows:
