@@ -16,6 +16,10 @@ async function createNetwork() {
     }
 }
 
+async function clearPassphrases(networkId) {
+    await dataRequest("DELETE", `networks/${networkId}/passphrases`);
+}
+
 async function deleteNetwork(networkId) {
     await dataRequest("DELETE", `networks/${networkId}`);
 }

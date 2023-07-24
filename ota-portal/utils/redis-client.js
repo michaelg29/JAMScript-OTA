@@ -77,6 +77,11 @@ async function removeFromSet(key, item) {
     return await execute("srem", [key, item]);
 }
 
+async function getSetSize(key) {
+    let [_, redisRes] = await execute("scard", [key]);
+    return redisRes;
+}
+
 module.exports = {
     createGUID: createGUID,
     execute: execute,
@@ -90,4 +95,5 @@ module.exports = {
     isInSet: isInSet,
     getSetMembers: getSetMembers,
     removeFromSet: removeFromSet,
+    getSetSize: getSetSize
 };

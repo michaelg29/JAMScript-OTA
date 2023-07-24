@@ -72,12 +72,14 @@ router.delete("/:id", errors.asyncWrap(async function(req, res, next) {
     res.sendStatus(204);
 }));
 
-function map(networkObj) {
+function map(networkObj, nodeListSize, passphraseListSize) {
     const createdOn = Number.parseInt(networkObj.createdOn);
 
     return {
         name: networkObj.name,
         createdOn: new Date(createdOn).toDateString(),
+        nodeListSize: nodeListSize,
+        passphraseListSize: passphraseListSize
     };
 }
 
@@ -85,9 +87,12 @@ async function filterNetworkEntries(networkIds) {
     let networks = {};
 
     for (let networkId of networkIds) {
-        [err, networkObj] = await rclient.getObj(network.networkKey(networkId));
+        let [_, networkObj] = await rclient.getObj(network.networkKey(networkId));
         if (networkObj) {
-            networks[networkId] = map(networkObj);
+
+            networks[networkId] = map(networkObj,
+                await rclient.getSetSize(node.networkNodesKey(networkId)),
+                await network.getNumberOfPassphrases(networkId));
         }
     }
 
@@ -139,6 +144,16 @@ router.post("/:id/node", errors.asyncWrap(async function(req, res, next) {
     await network.addNetworkPassphrase(networkId, nodeReq.name, nodeReq.pass);
 
     res.redirect("/nodes?network-id=" + req.params.id);
+}));
+
+/**
+ * Clear all unused passphrases.
+ */
+router.delete("/:id/passphrases", errors.asyncWrap(async function(req, res, next) {
+    const networkId = req.params.id;
+    await network.getNetworkFromOwner(req, networkId);
+    await network.clearPassphrases(networkId);
+    res.sendStatus(204);
 }));
 
 module.exports = router;

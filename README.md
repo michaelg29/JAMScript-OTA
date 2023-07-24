@@ -6,10 +6,6 @@
 * node program loading
     * version control
     * revert to previous version if program corrupted
-* single use registration key (list for each network)
-    * do not hardcode in header file
-    * enter through prompt in ijamreg
-    * clear all unused network registration keys (API /network/:id/passphrase)
 * node detect if not registered
     * keep registered field in node_info_t
 

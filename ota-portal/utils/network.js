@@ -140,6 +140,15 @@ const matchNetworkPassphrase = async function(netId, passphrase) {
     errors.error(401, "Invalid passphrase.");
 }
 
+/**
+ * Get the number of passphrases for a network.
+ * @param {string} netId Network ID.
+ * @returns The number of valid passphrases for the network.
+ */
+const getNumberOfPassphrases = async function(netId) {
+    return await rclient.getSetSize(networkPassphrasesKey(netId));
+}
+
 module.exports = {
     networkKey: networkKey,
     obj: {
@@ -153,4 +162,5 @@ module.exports = {
     clearPassphrases: clearPassphrases,
     addNetworkPassphrase: addNetworkPassphrase,
     matchNetworkPassphrase: matchNetworkPassphrase,
+    getNumberOfPassphrases: getNumberOfPassphrases
 };

@@ -14,7 +14,9 @@ block content
         th(class="seq-number")
         th(class="net-id") ID
         th(class="net-name") Name
-        th(class="net-created") Created On
+        th(class="net-created") Created on
+        th(class="net-nodes") Number of registered nodes
+        th(class="net-passphrases") Number of unused passphrases
         th(class="net-actions") Actions
     tbody
       -var i = 0;
@@ -24,6 +26,10 @@ block content
           td #{key}
           td #{value.name}
           td #{value.createdOn}
+          td #{value.nodeListSize}
+          td
+            span #{value.passphraseListSize}
+            input(type="submit", value="Clear all", class="clear-network-passphrases", onclick="clearPassphrases('" + key + "')")
           td
             a(href="/networks/" + key + "/node") Register
             input(type="submit", value="Delete Network", class="revoke-network", onclick="deleteNetwork('" + key + "')")
