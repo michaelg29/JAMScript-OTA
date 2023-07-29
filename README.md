@@ -1,14 +1,3 @@
-## TODO
-* ijam tools download for nodes (jamrun)
-    * automate on register call
-    * store version on node, request a new one if updated
-    * determine what files are needed
-* node program loading
-    * version control
-    * revert to previous version if program corrupted
-* node detect if not registered
-    * keep registered field in node_info_t
-
 ## Setting up
 ### Create `.env` file
 Make a copy of `.env.example` and rename it to `.env`.

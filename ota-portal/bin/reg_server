@@ -41,14 +41,25 @@ const server = tcp.startServer(process.env.REG_SERVER_PORT, undefined, (sock, da
                 // create node entry
                 let username = networkObj.username;
                 let uuid = req.nodeId == ijam.emptyUUID ? ijam.createUUID() : req.nodeId;
-                node.obj.create(uuid, req.networkId, username, nodeName, req.nodeType, req.nodeKey.toString("hex"))
-                    .then(() => {
-                        console.log("New node with UUID", uuid);
+                node.getNodeOrNull(uuid)
+                    .then(([nodeObj, _]) => {
+                        if (nodeObj) {
+                            if (nodeObj.username != username) {
+                                // generate new node ID
+                                uuid = ijam.createUUID();
+                                nodeObj = undefined;
+                            }
+                        }
 
-                        tcp.encryptAndSend(sock, 200, req.nodeKey, Buffer.from(uuid.replace(/-/g, ""), "hex"));
-                    })
-                    .catch((error) => {
-                        tcp.sendError(sock, error);
+                        node.obj.create(uuid, req.networkId, username, nodeName, req.nodeType, req.nodeKey.toString("hex"))
+                            .then(() => {
+                                console.log("New node with UUID", uuid);
+
+                                tcp.encryptAndSend(sock, 200, req.nodeKey, Buffer.from(uuid.replace(/-/g, ""), "hex"));
+                            })
+                            .catch((error) => {
+                                tcp.sendError(sock, error);
+                            });
                     });
             })
             .catch((error) => {

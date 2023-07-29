@@ -15,9 +15,9 @@ function killProgram(...data) {
 }
 
 // Parameters
-const nodeId = "774bb166-1080-4e2b-906e-0aa02d882e12";
-const program = "clear_redis_nodes";
-const blockSize = 128 - 2;
+let nodeId = "";
+let program = "clear_redis_nodes";
+let blockSize = 128 - 2;
 
 // Parse command line arguments
 for (let i = 0; i < process.argv.length - 1; ++i) {

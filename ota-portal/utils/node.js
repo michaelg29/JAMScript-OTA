@@ -33,7 +33,7 @@ const newNodeObj = async function(id, networkId, username, name, type, encKey) {
         encKey: encKey,
         ip: "",
         createdOn: Date.now(),
-        lastRegisteredOn: 0,
+        lastRegisteredOn: Date.now(),
         lastOnlineOn: 0,
         networkId: networkId,
         username: username,
@@ -161,6 +161,18 @@ const getNode = async function(nodeId) {
 };
 
 /**
+ * Get the node from the database, or return null if not found.
+ * @param {string} nodeId Guid of the node.
+ * @returns [node object or undefined if not found, node key mapping to the object in the database].
+ */
+const getNodeOrNull = async function(nodeId) {
+    const key = nodeKey(nodeId);
+    [err, redisRes] = await rclient.getObj(key);
+
+    return [redisRes, key];
+};
+
+/**
  * Determine if the node exists.
  * @param {string} nodeId guid of the node.
  * @returns The node key if the node exists, false otherwise.
@@ -172,7 +184,7 @@ const nodeExists = async function(nodeId) {
     return (!redisRes || redisRes.length === 0)
         ? false
         : key;
-}
+};
 
 /**
  * Get the node from the database. Throw an error if it does not exist or if it does not belong to the user.
@@ -271,6 +283,7 @@ module.exports = {
         offline: transitionNodeOffline,
     },
     getNode: getNode,
+    getNodeOrNull: getNodeOrNull,
     nodeExists: nodeExists,
     getNodeFromOwner: getNodeFromOwner,
     validateNodeTransition: validateNodeTransition,

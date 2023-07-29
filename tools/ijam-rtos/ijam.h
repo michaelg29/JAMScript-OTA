@@ -52,11 +52,12 @@ typedef enum {
 
 /** Node information structure. */
 typedef struct {
-    uuid_t nodeId;                       // The node uuid.
-    char networkId[MAX_NET_ID_LEN];      // The network uuid.
-    char nodeKey[NODE_KEY_LEN];          // The node encryption key.
-    node_type_e nodeType;                // The node type.
-    unsigned int checksum;               // Checksum to validate persisted data.
+    uuid_t nodeId;                      // The node uuid.
+    char networkId[MAX_NET_ID_LEN];     // The network uuid.
+    char nodeKey[NODE_KEY_LEN];         // The node encryption key.
+    node_type_e nodeType;               // The node type.
+    node_status_e nodeStatus;           // The last recorded status.
+    unsigned int checksum;              // Checksum to validate persisted data.
 } node_info_t;
 #define NODE_INFO_T_SIZE (int)sizeof(node_info_t)
 

@@ -71,6 +71,11 @@ int receiveBuffer(int sock) {
 }
 
 void updateStatus(node_status_e status) {
+    if (node.nodeStatus == status) {
+        printf("Node already at this status. No transition needed.\n");
+        return;
+    }
+
     // connect to status server
     if ((clientSock = connectToListener(OTA_IP, OTA_STAT_PORT)) < 0) {
         closeMsg("Could not connect to status server.");
@@ -118,6 +123,8 @@ void updateStatus(node_status_e status) {
 
     // close connection
     closeSock(&clientSock);
+
+    node.nodeStatus = status;
 }
 
 void createListener(int port) {
@@ -266,6 +273,8 @@ int main(int argc, char *argv[]) {
         }
 
         closeSock(&connectedClientSock);
+
+        updateStatus(ONLINE);
     }
 
     // ============================
