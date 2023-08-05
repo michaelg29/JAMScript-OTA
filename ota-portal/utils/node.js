@@ -2,8 +2,9 @@ const errors = require("./httperror");
 const rclient = require("./redis-client");
 
 const ijam_types = require("./ijam_types");
-const types = ijam_types.node.types;
+const architectures = ijam_types.node.architectures;
 const statuses = ijam_types.node.statuses;
+const types = ijam_types.node.types;
 
 const registrationExpiry = 1000 * 60 * 60 * 24 * 90;
 
@@ -22,14 +23,16 @@ const isExpired = function(nodeObj) {
  * @param {string} username Username of the owning user.
  * @param {string} name Name of the node.
  * @param {string} type Type of the node, selected from `types`.
+ * @param {string} arch Node architecture, selected from `architectures`.
  * @param {string} encKey The encryption key for the node.
  * @returns The created node object.
  */
-const newNodeObj = async function(id, networkId, username, name, type, encKey) {
+const newNodeObj = async function(id, networkId, username, name, type, arch, encKey) {
     const nodeObj = {
         status: statuses.OFFLINE,
         name: name,
         type: type,
+        arch: arch,
         encKey: encKey,
         ip: "",
         createdOn: Date.now(),

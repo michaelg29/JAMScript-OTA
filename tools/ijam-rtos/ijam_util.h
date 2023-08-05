@@ -4,6 +4,8 @@
 
 #include "ijam.h"
 
+extern int NODE_ARCH;
+
 /**
  * Close a socket and reset the variable.
  * @param sock      The pointer to the socket variable.

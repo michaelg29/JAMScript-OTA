@@ -51,7 +51,7 @@ const server = tcp.startServer(process.env.REG_SERVER_PORT, undefined, (sock, da
                             }
                         }
 
-                        node.obj.create(uuid, req.networkId, username, nodeName, req.nodeType, req.nodeKey.toString("hex"))
+                        node.obj.create(uuid, req.networkId, username, nodeName, req.nodeType, req.nodeArch, req.nodeKey.toString("hex"))
                             .then(() => {
                                 console.log("New node with UUID", uuid);
 

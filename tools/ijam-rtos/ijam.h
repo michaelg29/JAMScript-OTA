@@ -29,19 +29,34 @@ typedef struct {
     unsigned char bytes[UUID_SIZE];
 } uuid_t;
 
-/** Node types. */
+/** Node architectures. */
 typedef enum {
-    DEVICE = 0b001,
-    FOG =    0b010,
-    CLOUD =  0b100,
-} node_type_e;
+    //NONE       = 0b000001,
+    X86_UBUNTU = 0b000010,
+    RPI_LINUX  = 0b000100,
+    WSL        = 0b001000,
+    MACOS      = 0b010000,
+    ESP32      = 0b100000,
+} node_arch_e;
 
 /** Node statuses. */
 typedef enum {
-    ONLINE  = 0b001,
-    LOADING = 0b010,
-    OFFLINE = 0b100,
+    //NONE    = 0b0000001,
+    CREATED = 0b0000010,
+    OFFLINE = 0b0000100,
+    LOADING = 0b0001000,
+    ONLINE  = 0b0010000,
+    EXPIRED = 0b0100000,
+    REVOKED = 0b1000000,
 } node_status_e;
+
+/** Node types. */
+typedef enum {
+    //NONE    = 0b0001,
+    DEVICE  = 0b0010,
+    FOG     = 0b0100,
+    CLOUD   = 0b1000,
+} node_type_e;
 
 /** Maximum length of the network ID and registration key. */
 #define MAX_NET_ID_LEN 16
@@ -68,6 +83,7 @@ typedef struct {
     char networkPhrase[MAX_NET_PHRASE_LEN]; // The passphrase for the network.
     char nodeKey[NODE_KEY_LEN];             // The node encryption key.
     node_type_e nodeType;                   // The node type.
+    node_arch_e nodeArch;                   // The node architecture.
 } register_request_t;
 #define REGISTER_REQUEST_T_SIZE (int)sizeof(register_request_t)
 

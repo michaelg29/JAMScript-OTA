@@ -3,21 +3,33 @@ const passphrases = require("./network_passphrase");
 const nodeKeyLen = 32; // AES-256-CBC
 const maxNetworkIdLength = 16;
 
-// Node types
-const node_type_e = {
-    DEVICE: "device",
-    FOG: "fog",
-    CLOUD: "cloud"
+// Node architectures
+const node_arch_e = {
+    NONE: "none",
+    X86_UBUNTU: "x86_ubuntu",
+    RPI_LINUX: "rpi_linux",
+    WSL: "wsl",
+    MACOS: "macos",
+    ESP32: "esp_32",
 };
 
 // Node statuses
 const node_status_e = {
+    NONE: "none",
     CREATED: "created",
     OFFLINE: "offline",
     LOADING: "loading",
     ONLINE: "online",
     EXPIRED: "expired",
     REVOKED: "revoked",
+};
+
+// Node types
+const node_type_e = {
+    NONE: "none",
+    DEVICE: "device",
+    FOG: "fog",
+    CLOUD: "cloud",
 };
 
 const emptyUUID = "00000000-0000-0000-0000-000000000000";
@@ -62,7 +74,38 @@ const getZeroTerminatedString = function(buf, offset = 0, maxLen = 0) {
         end -= (end - offset) - maxLen;
     }
     return buf.toString("utf-8", offset, end);
-}
+};
+
+/**
+ * Decode a one-hot number by matching the index of the one to a dictionary.
+ * @param {number} num      One-hot number to decode.
+ * @param {number} n_bits   The number of bits to search through.
+ * @param {object} vals_e   The enum type to decode to.
+ * @param {string} invalid_val The value to return if the encoding was incorrect.
+ * @returns                 The decoded value.
+ */
+const decodeOneHotNumber = function(num, vals_e, invalid_val) {
+    let ret = undefined;
+    let one_idx = 0;
+    let mask = 1;
+    let n_bits = Object.values(vals_e).length;
+    for (let e_val in vals_e) {
+        if (one_idx >= n_bits) {
+            break;
+        }
+        if ((num & mask) > 0) {
+            if (!!ret) {
+                return invalid_val;
+            }
+            ret = e_val;
+        }
+
+        one_idx++;
+        mask <<= 1;
+    }
+
+    return ret || invalid_val;
+};
 
 /**
  * Parse a registration request.
@@ -70,8 +113,8 @@ const getZeroTerminatedString = function(buf, offset = 0, maxLen = 0) {
  * @returns The request.
  */
 const parseRegisterRequest = function(buf) {
-    // length = nodeId (uuid) + networkId (uuid) + networkRegKey + nodeKey + node type (int)
-    let regReqLen = 16 + maxNetworkIdLength + passphrases.maxPassphraseLength + nodeKeyLen + 4;
+    // length = nodeId (uuid) + networkId (uuid) + networkRegKey + nodeKey + node type (int) + node arch (int)
+    let regReqLen = 16 + maxNetworkIdLength + passphrases.maxPassphraseLength + nodeKeyLen + 4 + 4;
     if (buf.byteLength != regReqLen) {
         console.log("Received", buf.byteLength, "bytes, expected", regReqLen, "bytes");
         throw "Invalid length";
@@ -96,18 +139,16 @@ const parseRegisterRequest = function(buf) {
     cursor += nodeKeyLen;
 
     // read node type
-    let nodeTypeInt = buf.readInt32LE(cursor);
-    let nodeType;
-    switch(nodeTypeInt) {
-        case 0b100:
-            nodeType = node_type_e.CLOUD;
-            break;
-        case 0b010:
-            nodeType = node_type_e.FOG;
-            break;
-        default: // case 0b001
-            nodeType = node_type_e.DEVICE;
-            break;
+    let nodeType = decodeOneHotNumber(buf.readInt32LE(cursor), node_type_e, node_type_e.NONE);
+    if (nodeType == node_type_e.NONE) {
+        throw "Invalid node type.";
+    }
+    cursor += 4;
+
+    // read node architecture
+    let nodeArch = decodeOneHotNumber(buf.readInt32LE(cursor), node_arch_e, node_arch_e.NONE);
+    if (nodeType == node_arch_e.NONE) {
+        throw "Invalid node architecture";
     }
 
     return {
@@ -116,6 +157,7 @@ const parseRegisterRequest = function(buf) {
         networkPassphrase: networkPassphrase,
         nodeKey: nodeKey,
         nodeType: nodeType,
+        nodeArch: nodeArch,
     };
 };
 
@@ -126,17 +168,9 @@ const parseRegisterRequest = function(buf) {
  */
 const parseNodeStatusRequest = function(buf) {
     let nodeStatusInt = buf.readInt32LE(0);
-    let nodeStatus;
-    switch (nodeStatusInt) {
-        case 0b100:
-            nodeStatus = node_status_e.OFFLINE;
-            break;
-        case 0b010:
-            nodeStatus = node_status_e.LOADING;
-            break;
-        default: // case 0b001
-            nodeStatus = node_status_e.ONLINE;
-            break;
+    let nodeStatus = decodeOneHotNumber(buf.readInt32LE(0), node_status_e, node_status_e.NONE);
+    if (nodeStatus == node_status_e.NONE) {
+        throw "Invalid node status.";
     }
 
     return {
@@ -147,8 +181,9 @@ const parseNodeStatusRequest = function(buf) {
 module.exports = {
     maxNetworkIdLength: maxNetworkIdLength,
     node: {
-        types: node_type_e,
+        architectures: node_arch_e,
         statuses: node_status_e,
+        types: node_type_e,
     },
     emptyUUID: emptyUUID,
     createUUID: createUUID,

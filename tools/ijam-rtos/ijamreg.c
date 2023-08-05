@@ -152,6 +152,8 @@ int main(int argc, char *argv[]) {
         reg_req.nodeType = node.nodeType;
     }
 
+    reg_req.nodeArch = NODE_ARCH;
+
     // set network credentials
 #ifdef USE_DEFAULT_NET_CREDENTIALS
     memcpy(reg_req.networkId, DEF_NETWORK_ID, DEF_NETWORK_ID_LEN);
