@@ -43,6 +43,9 @@ const server = tcp.startServer(process.env.STATE_SERVER_PORT, undefined, (sock, 
                     case ijam.node.statuses.OFFLINE:
                         promise = node.transition.offline(nodeId, nodeObj);
                         break;
+                    default:
+                        errors.error(400, "Invalid state");
+                        break;
                 }
 
                 // return

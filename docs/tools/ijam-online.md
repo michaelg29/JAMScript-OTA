@@ -11,6 +11,32 @@ permalink: /tools/ijam-online/
 
 ## Flow description
 
-![Sequence diagram](../media/drawio/ijam-ijam-online.svg)
+![Sequence diagram](../media/drawio/ijam-online-flow.svg)
 
 ## Schema description
+
+See the [state server](../ota-portal/state-server.md#schema-description) schema.
+
+### Decrypted request body
+
+**Length**: 4+ bytes
+
+#### Fields
+
+Bytes | Name | Description
+-|-|-
+[3:0]<br/><br/><br/> | nodeStatus<br/><br/><br/> | The number representing the new node state.<br/>8: [LOADING](#fields-for-loading-request)<br/>64: [REVOKED](#fields-for-revoked-request)
+[...:4] | ... | ...
+
+#### Fields for `LOADING` request
+
+Bytes | Name | Description
+-|-|-
+[3:0] | nodeStatus | 8: LOADING
+[7:4] | fileSize | The length of the file to be uploaded to the node.
+
+#### Fields for `REVOKED` request
+
+Bytes | Name | Description
+-|-|-
+[3:0] | nodeStatus | 64: REVOKED

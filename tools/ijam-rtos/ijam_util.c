@@ -16,7 +16,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-int NODE_ARCH = WSL;
+int NODE_ARCH = N_ARCH_WSL;
 
 void closeSock(int *sock) {
     if (sock && *sock) {

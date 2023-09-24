@@ -77,14 +77,33 @@ const getZeroTerminatedString = function(buf, offset = 0, maxLen = 0) {
 };
 
 /**
+ * Encode an enum value using one-hot encoding.
+ * @param {object} vals_e   The enum to encode from.
+ * @param {string} val      The enum value to encode.
+ * @returns                 The encoded number, 0 if not found.
+ */
+const oneHotEncoding = function(vals_e, val) {
+    let encoded = 1;
+    for (let e_val in vals_e) {
+        if (e_val == val) {
+            return encoded;
+        }
+
+        encoded <<= 1;
+    }
+
+    return 0;
+}
+
+/**
  * Decode a one-hot number by matching the index of the one to a dictionary.
  * @param {number} num      One-hot number to decode.
  * @param {number} n_bits   The number of bits to search through.
  * @param {object} vals_e   The enum type to decode to.
- * @param {string} invalid_val The value to return if the encoding was incorrect.
+ * @param {string} def      The value to return if the encoding was incorrect.
  * @returns                 The decoded value.
  */
-const decodeOneHotNumber = function(num, vals_e, invalid_val) {
+const decodeOneHotNumber = function(num, vals_e, def) {
     let ret = undefined;
     let one_idx = 0;
     let mask = 1;
@@ -95,7 +114,7 @@ const decodeOneHotNumber = function(num, vals_e, invalid_val) {
         }
         if ((num & mask) > 0) {
             if (!!ret) {
-                return invalid_val;
+                return def;
             }
             ret = e_val;
         }
@@ -104,7 +123,7 @@ const decodeOneHotNumber = function(num, vals_e, invalid_val) {
         mask <<= 1;
     }
 
-    return ret || invalid_val;
+    return ret || def;
 };
 
 /**
@@ -167,7 +186,6 @@ const parseRegisterRequest = function(buf) {
  * @returns The request.
  */
 const parseNodeStatusRequest = function(buf) {
-    let nodeStatusInt = buf.readInt32LE(0);
     let nodeStatus = decodeOneHotNumber(buf.readInt32LE(0), node_status_e, node_status_e.NONE);
     if (nodeStatus == node_status_e.NONE) {
         throw "Invalid node status.";
@@ -190,4 +208,5 @@ module.exports = {
     readUUID: readUUID,
     parseRegisterRequest: parseRegisterRequest,
     parseNodeStatusRequest: parseNodeStatusRequest,
+    oneHotEncoding: oneHotEncoding,
 };

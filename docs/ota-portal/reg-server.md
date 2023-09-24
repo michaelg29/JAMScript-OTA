@@ -22,4 +22,28 @@ The registration server accepts registration requests from nodes, encrypted usin
 ![Sequence diagram](../media/drawio/ijam-reg-server.svg)
 
 ## Schema description
+
 ### Decrypted request body
+
+**Length**: 88 bytes
+
+#### Fields
+
+Bytes | Name | Description
+-|-|-
+[15:0] | nodeId | The UUID of the node. Empty if the server should generate one.
+[31:15] | networkId | The UUID of the network to connect the node to.
+[47:32] | networkPhrase | The passphrase for the network.
+[79:48] | nodeKey | The encryption key to use for the node's communications (AES-256).
+[83:80] | nodeType | The number representing the node type.
+[87:84] | nodeArch | The node's architecture.
+
+### Decrypted response
+
+**Length**: 16 bytes
+
+#### Fields
+
+Bytes | Name | Description
+-|-|-
+[15:0] | nodeId | The UUID of the node created or updated.

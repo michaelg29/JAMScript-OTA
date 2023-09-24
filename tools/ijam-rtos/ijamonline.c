@@ -183,8 +183,8 @@ int main(int argc, char *argv[]) {
     // === Send online request ===
     // ===========================
 
-    updateStatus(OFFLINE);
-    updateStatus(ONLINE);
+    updateStatus(N_STATUS_OFFLINE);
+    updateStatus(N_STATUS_ONLINE);
 
     // ======================
     // === Start listener ===
@@ -194,11 +194,11 @@ int main(int argc, char *argv[]) {
         closeMsg("Could not create listener socket.\n");
     }
 
-    bool loading = false;
+    bool notRevoked = true;
     int invalidMsgCounter = 0;
     int fileSize, fileCursor;
 
-    while (true) {
+    while (notRevoked) {
         printf("Listening on port %d for a connection.\n", OTA_ONLINE_PORT);
 
         if ((connectedClientSock = accept(servSock, (struct sockaddr *)&client_addr, &addr_size)) < 0) {
@@ -236,53 +236,72 @@ int main(int argc, char *argv[]) {
                 invalidMsgCounter = 0;
             }
 
-            if (!loading) {
-                // get file size
-                fileSize = ((int*)(buffer2 + cursor))[0];
-                fileCursor = 0;
-                printf("Clearing JXE\n\n\n");
-                clear_jxe();
-                printf("Updating status to LOADING\n\n\n");
-                updateStatus(LOADING);
-
-                loading = true;
-                printf("Prepared to load program of size %d\n", fileSize);
-            }
-            else {
-                // write bytes into file
+            if (node.status == N_STATUS_LOADING) {
                 printf("Received %d bytes, writing to file at %d.\n", decBytes, fileCursor);
                 if (fileCursor >= fileSize || ((int*)(buffer2 + cursor))[0] == 0) {
+                    // startup with new file
                     printf("Received all bytes.\n");
                     SEND_STATUS(200);
+                    updateStatus(N_STATUS_ONLINE);
                     break;
                 }
                 else {
+                    // write bytes into file
                     int n = save_jxe(buffer2 + cursor, fileCursor, decBytes - cursor);
                     if (n) {
                         fileCursor += n;
                         printf("Wrote %d bytes, cursor at %d.\n", n, fileCursor);
+                        SEND_STATUS(200);
                     }
                     else {
                         printf("Could not write.");
                         SEND_STATUS(500);
                     }
                 }
+
+                continue;
+            }
+
+            // get requested status
+            node_status_e reqStatus = (node_status_e)((int*)(buffer2 + cursor))[0];
+            cursor += sizeof(int);
+
+            if (status == N_STATUS_LOADING) {
+                if (node.status != N_STATUS_LOADING) {
+                    // get file size
+                    fileSize = ((int*)(buffer2 + cursor))[0];
+                    fileCursor = 0;
+                    printf("Clearing JXE\n\n\n");
+                    clear_jxe();
+                    printf("Updating status to LOADING\n\n\n");
+                    updateStatus(N_STATUS_LOADING);
+                    
+                    printf("Prepared to load program of size %d\n", fileSize);
+                }
+            }
+            else if (status == N_STATUS_REVOKED) {
+                notRevoked = true;
+                break;
+            }
+            else {
+                SEND_STATUS(400);
             }
 
             SEND_STATUS(200);
         }
-
+#undef SEND_STATUS
         closeSock(&connectedClientSock);
-
-        updateStatus(ONLINE);
     }
 
-    // ============================
-    // === Send offline request ===
-    // ============================
+    // =========================
+    // === Voluntary cleanup ===
+    // =========================
+    if (notRevoked) {
+        updateStatus(N_STATUS_OFFLINE);
+    }
 
-    updateStatus(OFFLINE);
-
-    // close
+    // ========================
+    // === Required cleanup ===
+    // ========================
     closeMsg("Connection closed.");
 }

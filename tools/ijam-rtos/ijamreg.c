@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
     if (!bytes_read) {
         // initialize node information
         memset(reg_req.nodeId.bytes, 0, UUID_SIZE);
-        reg_req.nodeType = DEVICE;
+        reg_req.nodeType = N_TYPE_DEVICE;
     }
     else {
         // copy existing node information
@@ -170,9 +170,9 @@ int main(int argc, char *argv[]) {
     
     // set node type
     switch ((char)reg_req.nodeType) {
-        case 'c': reg_req.nodeType = CLOUD; break;
-        case 'f': reg_req.nodeType = FOG; break;
-        default:  reg_req.nodeType = DEVICE; break;
+        case 'c': reg_req.nodeType = N_TYPE_CLOUD; break;
+        case 'f': reg_req.nodeType = N_TYPE_FOG; break;
+        default:  reg_req.nodeType = N_TYPE_DEVICE; break;
     }
 
     // generate random node key

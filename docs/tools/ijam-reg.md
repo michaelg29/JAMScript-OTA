@@ -26,3 +26,4 @@ The registration client constructs the registration request, then sends it to th
 
 ## Schema description
 
+See the [certificate server](../ota-portal/cert-server.md#schema-description) and the [registration server](../ota-portal/reg-server.md#schema-description) schema.

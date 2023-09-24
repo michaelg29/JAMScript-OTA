@@ -67,6 +67,7 @@ node.getNode(nodeId)
         const client = tcp.startClient(ip, process.env.OTA_ONLINE_PORT, () => {
             // request the node transitions to loading
             let lengthBuf = Buffer.alloc(4);
+            lengthBuf.writeInt32LE(ijam.oneHotEncoding(ijam.node.statuses.LOADING));
             lengthBuf.writeInt32LE(fileSize);
             tcp.encryptAndSend(client, undefined, encKey, lengthBuf);
         }).on("data", (data) => {

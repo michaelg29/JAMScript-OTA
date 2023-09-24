@@ -1,18 +1,19 @@
-## To test
+## To test/validate
 * node detect if not registered
     * keep registered field in node_info_t: persisted struct will not be valid if not registered
 * node must transition to online after done loading
     * keep track of current state so no redundant transitions
 * ijamreg: node HW type - AMD x86 ubuntu, wsl, macos, raspberry-pi linux, esp-32
+* documentation
+    * schema for requests in a table
 
 ## Bugs
 1. node list filtering does not work
 
 ## Features
 1. documentation
-    * schema for requests in a table
+    * flow for ijam_online, jxe_loader
 1. jxe_loader
-    * configuration
     * configurable block size - send to node
     * configurable protocol (set on website) - AES params, handshake
 1. node programs

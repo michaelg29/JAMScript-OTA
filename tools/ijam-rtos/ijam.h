@@ -4,8 +4,8 @@
 
 #define IJAM_DEBUG 1 // comment out to silence most printf statements
 
-#define STR_IMPL_(x) #x      //stringify argument
-#define STR(x) STR_IMPL_(x)  //indirection to expand argument macros
+#define STR_IMPL_(x) #x      // stringify argument
+#define STR(x) STR_IMPL_(x)  // indirection to expand argument macros
 
 /** Magic value to send to the certificate server for validation. */
 #define CERT_REQ_MAGIC 0x8c124d3f
@@ -31,32 +31,39 @@ typedef struct {
 
 /** Node architectures. */
 typedef enum {
-    //NONE       = 0b000001,
-    X86_UBUNTU = 0b000010,
-    RPI_LINUX  = 0b000100,
-    WSL        = 0b001000,
-    MACOS      = 0b010000,
-    ESP32      = 0b100000,
+    N_ARCH_NONE       = 0b000001,
+    N_ARCH_X86_UBUNTU = 0b000010,
+    N_ARCH_RPI_LINUX  = 0b000100,
+    N_ARCH_WSL        = 0b001000,
+    N_ARCH_MACOS      = 0b010000,
+    N_ARCH_ESP32      = 0b100000,
 } node_arch_e;
 
 /** Node statuses. */
 typedef enum {
-    //NONE    = 0b0000001,
-    CREATED = 0b0000010,
-    OFFLINE = 0b0000100,
-    LOADING = 0b0001000,
-    ONLINE  = 0b0010000,
-    EXPIRED = 0b0100000,
-    REVOKED = 0b1000000,
+    N_STATUS_NONE    = 0b0000001,
+    N_STATUS_CREATED = 0b0000010,
+    N_STATUS_OFFLINE = 0b0000100,
+    N_STATUS_LOADING = 0b0001000,
+    N_STATUS_ONLINE  = 0b0010000,
+    N_STATUS_EXPIRED = 0b0100000,
+    N_STATUS_REVOKED = 0b1000000,
 } node_status_e;
 
 /** Node types. */
 typedef enum {
-    //NONE    = 0b0001,
-    DEVICE  = 0b0010,
-    FOG     = 0b0100,
-    CLOUD   = 0b1000,
+    N_TYPE_NONE    = 0b0001,
+    N_TYPE_DEVICE  = 0b0010,
+    N_TYPE_FOG     = 0b0100,
+    N_TYPE_CLOUD   = 0b1000,
 } node_type_e;
+
+/** Request types. */
+typedef enum {
+    R_TYPE_PING   = 0b001,
+    R_TYPE_LOAD   = 0b010,
+    R_TYPE_REVOKE = 0b100,
+} request_type_e;
 
 /** Maximum length of the network ID and registration key. */
 #define MAX_NET_ID_LEN 16
