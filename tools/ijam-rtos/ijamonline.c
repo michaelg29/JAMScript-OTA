@@ -236,7 +236,7 @@ int main(int argc, char *argv[]) {
                 invalidMsgCounter = 0;
             }
 
-            if (node.status == N_STATUS_LOADING) {
+            if (node.nodeStatus == N_STATUS_LOADING) {
                 printf("Received %d bytes, writing to file at %d.\n", decBytes, fileCursor);
                 if (fileCursor >= fileSize || ((int*)(buffer2 + cursor))[0] == 0) {
                     // startup with new file
@@ -266,8 +266,8 @@ int main(int argc, char *argv[]) {
             node_status_e reqStatus = (node_status_e)((int*)(buffer2 + cursor))[0];
             cursor += sizeof(int);
 
-            if (status == N_STATUS_LOADING) {
-                if (node.status != N_STATUS_LOADING) {
+            if (reqStatus == N_STATUS_LOADING) {
+                if (node.nodeStatus != N_STATUS_LOADING) {
                     // get file size
                     fileSize = ((int*)(buffer2 + cursor))[0];
                     fileCursor = 0;
@@ -279,7 +279,7 @@ int main(int argc, char *argv[]) {
                     printf("Prepared to load program of size %d\n", fileSize);
                 }
             }
-            else if (status == N_STATUS_REVOKED) {
+            else if (reqStatus == N_STATUS_REVOKED) {
                 notRevoked = true;
                 break;
             }

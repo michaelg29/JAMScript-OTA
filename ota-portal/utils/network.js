@@ -70,8 +70,7 @@ const networkExists = async function(netId) {
  */
 const belongsToOwner = async function(req, netId) {
     const userNetsKey = userNetworksKeyFromReq(req);
-    [err, redisRes] = await rclient.isInSet(userNetsKey, netId);
-    if (err || redisRes == 0) {
+    if (!(await rclient.isInSet(userNetsKey, netId))) {
         errors.error(404, "Network not found.");
     }
 }

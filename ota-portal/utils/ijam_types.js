@@ -108,7 +108,7 @@ const decodeOneHotNumber = function(num, vals_e, def) {
     let one_idx = 0;
     let mask = 1;
     let n_bits = Object.values(vals_e).length;
-    for (let e_val in vals_e) {
+    for (let e_val of Object.values(vals_e)) {
         if (one_idx >= n_bits) {
             break;
         }

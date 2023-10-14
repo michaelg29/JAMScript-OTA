@@ -3,13 +3,24 @@ extends ../layout
 block content
   h1 Node list
 
+  h2 Command center
+
+  div
+    label Select file to upload to selected nodes
+      input(type="file" id="file-input")
+      input(type="submit" value="Upload", onclick="uploadFile()")
+
+  h2 Table of nodes
+
   table(class="nodes bigTable")
     thead
       tr
         th(class="seq-number")
+        th()
         th(class="node-id") ID
         th(class="node-name") Name
         th(class="node-type") Type
+        th(class="node-arch") Architecture
         th(class="node-status") Status
         th(class="node-created") Created On
         th(class="node-registered") Last Registered On
@@ -18,10 +29,14 @@ block content
       -var i = 0;
       each value, key in data
         tr(class='type-' + value.type + ' status-' + value.status)
+          td
+            if value.status == "online"
+              input(type="checkbox" class="node-selector" id="select-" + key)
           td= i++
           td #{key}
           td #{value.name}
           td(class=value.type) #{value.type}
+          td #{value.arch}
           td(class=value.status) #{value.status}
           td #{value.createdOn}
           td #{value.lastRegisteredOn}

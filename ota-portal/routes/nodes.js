@@ -25,9 +25,10 @@ function map(network, nodeObj) {
         status: nodeObj.status,
         networkName: network.name,
         createdOn: new Date(createdOn).toDateString(),
-        lastRegisteredOn: lastRegisteredOn === 0
+        lastRegisteredOn: (lastRegisteredOn === 0
             ? 'Not registered yet'
-            : new Date(lastRegisteredOn).toDateString(),
+            : new Date(lastRegisteredOn).toDateString()),
+        arch: nodeObj.arch
     };
 }
 
