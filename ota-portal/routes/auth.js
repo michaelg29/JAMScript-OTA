@@ -1,8 +1,14 @@
+/**
+ * Authorization middleware.
+ */
+
 const express = require('express');
 const router = express.Router();
 const errors = require('../utils/httperror');
 const rclient = require('../utils/redis-client');
+const base64url = require('base64url').default;
 
+// encryption and decryption parameters and keys
 const crypto = require('crypto');
 const algorithm = 'aes-256-cbc';
 const key = !!process.env.PORTAL_TOKEN_ENC_KEY
@@ -12,10 +18,9 @@ const iv = !!process.env.PORTAL_TOKEN_ENC_IV
     ? Buffer.from(process.env.PORTAL_TOKEN_ENC_IV)
     : crypto.randomBytes(8);
 
+// cookie names
 const tokenCookieName = "jamota-token";
 const tokenExpiryCookieName = "jamota-token-expiry";
-
-const base64url = require('base64url').default;
 
 function encryptToken(token) {
     // get buffer of string
@@ -78,7 +83,9 @@ async function logout(req, res) {
     }
 }
 
-// access token decoder
+/**
+ * Access token decoder. To be executed before route-specific function.
+ */
 router.use(errors.asyncWrap(async function(req, res, next) {
     if (req.url === "/login" || req.url === "/createAccount") {
         next();
@@ -117,6 +124,9 @@ router.use(errors.asyncWrap(async function(req, res, next) {
     next();
 }));
 
+/**
+ * Request a refreshed access token.
+ */
 router.post("/refreshToken", async function(req, res, next) {
     if (req.user) {
         const userKey = "user:" + req.user.username;
@@ -132,12 +142,16 @@ router.post("/refreshToken", async function(req, res, next) {
     }
 });
 
-// registration form
+/**
+ * Form to create an account with the OTA system.
+ */
 router.get("/createAccount", function(req, res, next) {
     res.render("createAccount");
 });
 
-// create account request
+/**
+ * Register an account with the OTA system.
+ */
 router.post("/createAccount", errors.asyncWrap(async function(req, res, next) {
     if (!req.body || !req.body.email || !req.body.username || !req.body.password || !req.body.name) {
         errors.error(400, "Invalid input.");
@@ -175,7 +189,9 @@ router.post("/createAccount", errors.asyncWrap(async function(req, res, next) {
     res.redirect("/login");
 }));
 
-// login form
+/**
+ * Get the login form.
+ */
 router.get("/login", function(req, res, next) {
     if (req.user) {
         res.redirect("/");
@@ -185,7 +201,9 @@ router.get("/login", function(req, res, next) {
     }
 });
 
-// login request
+/**
+ * Validate a login request.
+ */
 router.post("/login", errors.asyncWrap(async function(req, res, next) {
     if (req.user) {
         res.sendStatus(200);
@@ -226,7 +244,9 @@ router.post("/login", errors.asyncWrap(async function(req, res, next) {
     res.redirect("/");
 }));
 
-// logout
+/**
+ * Logout the user.
+ */
 router.all("/logout", async function(req, res, next) {
     logout(req, res);
     res.redirect("/login");

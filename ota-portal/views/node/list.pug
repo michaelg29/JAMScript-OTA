@@ -8,7 +8,7 @@ block content
   div
     label Select file to upload to selected nodes
       input(type="file" id="file-input")
-      input(type="submit" value="Upload", onclick="uploadFile()")
+      input(type="submit" value="Upload", onclick="uploadFile('" + networkId + "')")
 
   h2 Table of nodes
 
@@ -30,7 +30,7 @@ block content
       each value, key in data
         tr(class='type-' + value.type + ' status-' + value.status)
           td
-            if value.status == "online"
+            if value.status == "online" && !!networkId
               input(type="checkbox" class="node-selector" id="select-" + key)
           td= i++
           td #{key}

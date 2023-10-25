@@ -4,14 +4,18 @@ const logger = require("morgan");
 const path = require("path");
 const errors = require("./utils/httperror");
 
+// middleware and router includes
 const auth = require("./routes/auth");
-const nodesRouter = require("./routes/nodes");
-const nodeAuthRouter = require("./routes/nodeAuth");
+const nodeListRouter = require("./routes/nodeList");
+const nodeRouter = require("./routes/nodes");
 const networksRouter = require("./routes/networks");
+const networkChannelsRouter = require("./routes/networkChannels");
+const networkRegistrationsRouter = require("./routes/networkRegistrations");
 
+// create application
 var app = express();
 
-// middleware
+// basic middleware
 app.use(logger('dev'));
 app.use(express.text({
     type: "text/*"
@@ -27,7 +31,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
 
-// authorization
+// authorization middleware
 app.use(auth);
 
 // index redirect
@@ -37,10 +41,14 @@ app.get("/", (req, res) => {
     });
 });
 
-app.use("/nodes", nodesRouter);
-app.use("/nodes", nodeAuthRouter);
+// register middleware
+app.use("/nodes", nodeRouter);
+app.use("/nodes", nodeListRouter);
 app.use("/networks", networksRouter);
+app.use("/networks", networkChannelsRouter);
+app.use("/networks", networkRegistrationsRouter);
 
+// not found handler
 app.use(function (req, res, next) {
     next(errors.errorObj(404, "Not found."));
 });
@@ -55,9 +63,11 @@ app.use(function (err, req, res, next) {
     res.locals.message = err.message;
     res.locals.error = isDevelopment ? err : {};
 
+    // set status code
     err.statusCode = err.statusCode || 500;
     res.status(err.statusCode);
 
+    // wrap content in specific content type
     const returnType = req.headers.accept;
     if (returnType === "application/json") {
         res.send({

@@ -10,19 +10,19 @@ async function deleteNode(nodeId) {
     await dataRequest("DELETE", `nodes/${nodeId}`);
 }
 
-async function uploadFile() {
+async function uploadFile(networkId) {
     // get node IDs to upload to
     let nodeSelectElements = document.querySelectorAll("input.node-selector");
-    let node_ids = [];
+    let nodeIds = [];
     for (let el of nodeSelectElements) {
         if (!!el.checked) {
-            node_ids.push(el.id.substring("select-".length));
+            nodeIds.push(el.id.substring("select-".length));
         }
     }
 
     // get channel ID to upload file
-    let channelRes = await dataRequest("POST", "file_channel", undefined, {
-        "node_ids": node_ids
+    let channelRes = await dataRequest("POST", `networks/${networkId}/channel`, undefined, {
+        "nodeIds": nodeIds
     });
 
     return;

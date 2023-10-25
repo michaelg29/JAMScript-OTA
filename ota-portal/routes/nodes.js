@@ -1,5 +1,7 @@
 /**
- * Authorized requests to manipulate and fetch multiple nodes.
+ * Authorized requests to transition nodes in the database. These
+ * requests come from the website, where a user must have an
+ * active logged-in session.
  */
 
 const express = require("express");
@@ -7,77 +9,56 @@ const router = express.Router();
 
 const rclient = require("./../utils/redis-client");
 const errors = require("./../utils/httperror");
+const request = require("./../utils/request");
 
 const node = require("./../utils/node");
-const network = require("./../utils/network");
-
-function applyFilter(nodeObj) {
-    return true;
-}
-
-function map(network, nodeObj) {
-    const createdOn = Number.parseInt(nodeObj.createdOn);
-    const lastRegisteredOn = Number.parseInt(nodeObj.lastRegisteredOn);
-
-    return {
-        name: nodeObj.name,
-        type: nodeObj.type,
-        status: nodeObj.status,
-        networkName: network.name,
-        createdOn: new Date(createdOn).toDateString(),
-        lastRegisteredOn: (lastRegisteredOn === 0
-            ? 'Not registered yet'
-            : new Date(lastRegisteredOn).toDateString()),
-        arch: nodeObj.arch
-    };
-}
-
-async function filterNodeEntries(req, networkIds) {
-    let nodes = {};
-    const requestedNetworkId = req.query["network-id"] || false;
-
-    for (let networkId of networkIds) {
-        if (requestedNetworkId) {
-            // query for requested network
-            if (networkId != requestedNetworkId) continue;
-
-            try {
-                await network.belongsToOwner(req, networkId);
-            } catch {
-                continue;
-            }
-        }
-
-        let [networkObj, _] = await network.getNetwork(networkId);
-        let [err, nodeIds] = await rclient.getSetMembers(node.networkNodesKey(networkId));
-
-        for (let nodeId of nodeIds) {
-            [err, nodeObj] = await rclient.getObj(node.nodeKey(nodeId));
-            if (nodeObj && applyFilter(nodeObj)) {
-                nodes[nodeId] = map(networkObj, nodeObj);
-            }
-        }
-    }
-
-    return nodes;
-}
 
 /**
- * Get all nodes.
+ * Revoke a node.
  */
-router.get("/", errors.asyncWrap(async function(req, res) {
-    [err, networkIds] = await rclient.getSetMembers(network.userNetworksKeyFromReq(req));
+router.purge("/:id", errors.asyncWrap(async function(req, res, next) {
+    // get requested node
+    const nodeId = req.params.id;
+    await node.getNodeFromOwner(req, nodeId);
 
-    var data = await filterNodeEntries(req, networkIds);
+    // update node entry in DB
+    await node.obj.revoke(nodeId);
 
-    if (req.headers.accept === "application/json") {
-        res.send(data)
+    res.status(200).send();
+}));
+
+/**
+ * Hard delete a node from the database.
+ */
+router.delete("/:id", errors.asyncWrap(async function(req, res, next) {
+    // get requested node
+    const nodeId = req.params.id;
+    [redisRes, nodeKey] = await node.getNodeFromOwner(req, nodeId);
+
+    // can only delete if revoked or expired
+    node.validateNodeTransition(redisRes, "deleted", [node.statuses.REVOKED, node.statuses.EXPIRED]);
+    await rclient.removeFromSet(node.networkNodesKey(redisRes.networkId), nodeId);
+    await rclient.del(nodeKey);
+
+    res.sendStatus(204);
+}));
+
+/**
+ * Ping a node.
+ */
+router.notify("/:id", errors.asyncWrap(async function(req, res, next) {
+    // get requested node
+    const nodeId = req.params.id;
+    [redisRes, nodeKey] = await node.getNodeFromOwner(req, nodeId);
+
+    // can ping only if online
+    if (redisRes.status !== node.statuses.ONLINE) {
+        errors.error(403, "Node not online.");
     }
-    else {
-        res.render("node/list", {
-            data: data
-        });
-    }
+
+    // ping the node
+
+    res.status(200).send();
 }));
 
 module.exports = router;
