@@ -27,3 +27,9 @@ RUN sudo chmod +x ${JAMOTA_ROOT}/start.sh
 # redis script setup
 COPY ./redis/redis.sh ${JAMOTA_ROOT}/redis/redis.sh
 RUN sudo chmod +x ${JAMOTA_ROOT}/redis/redis.sh
+
+RUN sudo mkdir -p ${JAMOTA_ROOT}/channels/files
+RUN sudo chmod a+rwx ${JAMOTA_ROOT}/channels/files
+
+RUN sudo mkdir -p ${JAMOTA_ROOT}/channels/commands
+RUN sudo chmod a+rwx ${JAMOTA_ROOT}/channels/commands

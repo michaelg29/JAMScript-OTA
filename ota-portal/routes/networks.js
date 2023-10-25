@@ -11,6 +11,7 @@ const request = require("../utils/request");
 
 const ijam_types = require("../utils/ijam_types");
 const network = require("../utils/network");
+const passphrases = require("../utils/network_passphrase");
 const node = require("../utils/node");
 
 /**
@@ -61,7 +62,7 @@ router.delete("/:id", errors.asyncWrap(async function(req, res, next) {
     await rclient.del(node.networkNodesKey(networkId));
 
     // delete passphrases
-    await network.clearPassphrases(networkId);
+    await passphrases.clearPassphrases(networkId);
 
     // remove from user network list
     await rclient.removeFromSet(network.userNetworksKeyFromReq(req), networkId);
@@ -91,7 +92,7 @@ async function filterNetworkEntries(networkIds) {
 
             networks[networkId] = map(networkObj,
                 await rclient.getSetSize(node.networkNodesKey(networkId)),
-                await network.getNumberOfPassphrases(networkId));
+                await passphrases.getNumberOfPassphrases(networkId));
         }
     }
 

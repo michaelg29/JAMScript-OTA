@@ -1,4 +1,6 @@
 
+const rclient = require("./redis-client");
+
 const maxPassphraseLength = 16;
 
 /** Get the key mapping to the network's active passphrases. */

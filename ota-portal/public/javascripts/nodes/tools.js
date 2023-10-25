@@ -10,7 +10,7 @@ async function deleteNode(nodeId) {
     await dataRequest("DELETE", `nodes/${nodeId}`);
 }
 
-async function uploadFile(networkId) {
+async function getChannel(networkId) {
     // get node IDs to upload to
     let nodeSelectElements = document.querySelectorAll("input.node-selector");
     let nodeIds = [];
@@ -24,15 +24,18 @@ async function uploadFile(networkId) {
     let channelRes = await dataRequest("POST", `networks/${networkId}/channel`, undefined, {
         "nodeIds": nodeIds
     });
+    console.log(channelRes);
+}
 
-    return;
+async function uploadFile(networkId) {
+    await getChannel(networkId);
 
     // upload file
     let file = document.querySelector("#file-input").files[0];
     const reader = new FileReader();
     reader.onload = (e) => {
         console.log("Sending file " + file.name);
-        dataRequest("POST", "file", undefined, e.target.result, "application/octet-stream")
+        dataRequest("POST", `networks/${networkId}/channel/file`, undefined, e.target.result, "application/octet-stream")
             .then((data) => {
                 console.log(data);
             })
@@ -40,5 +43,18 @@ async function uploadFile(networkId) {
                 console.log(err);
             });
     };
+
+    // read file
     reader.readAsArrayBuffer(file);
+}
+
+async function uploadCommand(networkId) {
+    await getChannel(networkId);
+
+    // read command
+    const cmd = document.querySelector("#cmd-input").value;
+
+    // upload command
+    let cmdRes = await dataRequest("POST", `networks/${networkId}/channel/cmd`, undefined, cmd, "text/plain");
+    console.log(cmdRes);
 }

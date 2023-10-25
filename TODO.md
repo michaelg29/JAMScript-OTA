@@ -26,6 +26,7 @@
         * through website, user executes jamkill to stop current running JAMScript program
         * through website, user uploads new .jxe file
         * through website, user executes jamrun to start new file
+        * update jxe_loader to match website data
 1. website
     * robust UI
     * auto-refresh page data (pull/push)

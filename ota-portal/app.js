@@ -17,6 +17,7 @@ var app = express();
 
 // basic middleware
 app.use(logger('dev'));
+app.use(express.raw());
 app.use(express.text({
     type: "text/*"
 }));

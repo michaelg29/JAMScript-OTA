@@ -6,9 +6,15 @@ block content
   h2 Command center
 
   div
-    label Select file to upload to selected nodes
-      input(type="file" id="file-input")
-      input(type="submit" value="Upload", onclick="uploadFile('" + networkId + "')")
+    p
+      label Select file to upload to selected nodes
+        input(type="file" id="file-input")
+        input(type="submit" value="Upload", onclick="uploadFile('" + networkId + "')")
+
+    p
+      label Send command to selected nodes
+        input(type="text" id="cmd-input")
+        input(type="submit" value="Upload" onclick="uploadCommand('" + networkId + "')")
 
   h2 Table of nodes
 
