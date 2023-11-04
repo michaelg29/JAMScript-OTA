@@ -133,6 +133,10 @@ if (fileSize == 0) {
     throw "Could not find program or program is empty.";
 }
 
+// =========================
+// ===== MAIN FUNCTION =====
+// =========================
+
 // client node object list
 let nodes = [];
 
@@ -212,7 +216,7 @@ function mainLoop() {
 // initialize node list and start send sequence
 channel.getChannelNodes(networkId, true, true)
     .then((nodeList) => {
-        // initial request buffer
+        // initial request buffer to transition state
         buf.writeInt32LE(ijam.oneHotEncoding(ijam.node.reqTypes, reqType), 0);
         buf.writeInt32LE(fileSize, 4);
 

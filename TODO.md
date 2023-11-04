@@ -32,6 +32,7 @@
 1. website
     * robust UI
     * auto-refresh page data (pull/push)
+    * better home page links
 
 ## Backlog
 1. users share network

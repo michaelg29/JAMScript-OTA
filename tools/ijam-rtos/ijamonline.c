@@ -26,18 +26,24 @@
 #include "ijam.h"
 #include "ijam_util.h"
 
-#define BUF_SIZE 1024
-#define MAX_INVALID_MSG_COUNTER 16
-
+/** Sockets and addresses. */
 int clientSock;
 int servSock;
 int connectedClientSock;
-
 struct sockaddr_in serv_addr;
 struct sockaddr_in client_addr;
 socklen_t addr_size;
 
+/** Node state. */
+#define MAX_INVALID_MSG_COUNTER 16
+bool stayOnline;
+int invalidMsgCounter;
+int fileSize, fileCursor;
 node_info_t node;
+
+/** Message buffers. */
+#define BUF_SIZE 1024
+int recvBytes, decBytes;
 static unsigned char buffer[BUF_SIZE];
 static unsigned char buffer2[BUF_SIZE];
 static unsigned char err[BUF_SIZE];
@@ -71,6 +77,7 @@ int receiveBuffer(int sock) {
     return bytesRecv;
 }
 
+/** Update a node status with the state server. */
 void updateStatus(node_status_e status) {
     if (node.nodeStatus == status) {
         printf("Node already at this status. No transition needed.\n");
@@ -95,13 +102,10 @@ void updateStatus(node_status_e status) {
     // construct message
     status_request_t req;
     req.nodeStatus = status;
-
-    int decSize = STATUS_REQUEST_T_SIZE;
     memcpy(buffer2 + 16, &req, STATUS_REQUEST_T_SIZE);
 
     // encrypt and send
-    int encBytes = aes_encrypt(buffer2, 16 + decSize, BUF_SIZE, buffer + UUID_SIZE, BUF_SIZE - UUID_SIZE - 16, node.nodeKey);
-    printf("%d %d\n", encBytes, decSize);
+    int encBytes = aes_encrypt(buffer2, 16 + STATUS_REQUEST_T_SIZE, BUF_SIZE, buffer + UUID_SIZE, BUF_SIZE - UUID_SIZE - 16, node.nodeKey);
     printf("\nCiphertext:\n");
     for (int i = 0; i < UUID_SIZE + encBytes; ++i) {
         printf("%02x", buffer[i] & 0xff);
@@ -125,51 +129,31 @@ void updateStatus(node_status_e status) {
     // close connection
     closeSock(&clientSock);
 
+    // update local state
     node.nodeStatus = status;
 }
 
-void createListener(int port) {
-    // create socket
-    if ((servSock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-        closeMsg("Could not create listener socket.");
-    }
-
-    printf("Server socket created.\n");
-
-    // bind socket
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = PF_INET;
-    serv_addr.sin_port = htons(port);
-    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr_size = sizeof(serv_addr);
-    if ((bind(servSock, (struct sockaddr *)&serv_addr, addr_size)) < 0) {
-        closeMsg("Could not bind listener socket.");
-    }
-
-    printf("Server socket bound.\n");
-
-    // listen on port
-    if (listen(servSock, 10) == -1) {
-        closeMsg("Could not start listener.");
-    }
-
-    printf("Server socket listening on port %d.", port);
-}
-
+/** Reply with a 2-byte request status code. */
 void sendStatus(int sock, short status) {
     printf("Sending status %d.\n", status);
     ((short*)buffer)[0] = status;
     sendBuffer(sock, (int)sizeof(short));
 }
 
+/** Ctrl+C handler. */
 static void sigIntHandler(int sig) {
-    //updateStatus(offline);
+    updateStatus(N_STATUS_OFFLINE);
     closeMsg("Interrupted.");
 }
 
+/** Main function. */
 int main(int argc, char *argv[]) {
-    int recvBytes, decBytes;
 
+    // ===============
+    // === Startup ===
+    // ===============
+
+    // bind handler to send offline when program ends
     if (signal(SIGINT, sigIntHandler) == SIG_ERR) {
         closeMsg("Error! Could not bind the signal handlers\n");
     }
@@ -179,6 +163,10 @@ int main(int argc, char *argv[]) {
     if (!bytes_read) {
         closeMsg("Node information not saved.");
     }
+
+    // initial state
+    stayOnline = true;
+    invalidMsgCounter = 0;
 
     // ===========================
     // === Send online request ===
@@ -195,9 +183,9 @@ int main(int argc, char *argv[]) {
         closeMsg("Could not create listener socket.\n");
     }
 
-    bool stayOnline = true;
-    int invalidMsgCounter = 0;
-    int fileSize, fileCursor;
+    // =================
+    // === Main loop ===
+    // =================
 
     while (stayOnline) {
         printf("Listening on port %d for a connection.\n", OTA_ONLINE_PORT);
@@ -207,6 +195,10 @@ int main(int argc, char *argv[]) {
         }
 
         printf("Connection accepted from %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
+        // ===========================
+        // === Data reception loop ===
+        // ===========================
 
         while (true) {
 #define SEND_STATUS(status) sendStatus(connectedClientSock, status); continue;
@@ -223,10 +215,12 @@ int main(int argc, char *argv[]) {
             int cursor = 16; // skip IV
             printf("Decrypted %d bytes.\n", decBytes);
 
+            // handle subsequent invalid transfers
             if (!decBytes) {
                 invalidMsgCounter++;
                 if (invalidMsgCounter >= MAX_INVALID_MSG_COUNTER) {
                     sendStatus(connectedClientSock, 302);
+                    break;
                 }
 
                 // send error
@@ -237,6 +231,7 @@ int main(int argc, char *argv[]) {
                 invalidMsgCounter = 0;
             }
 
+            // read request as integers
             int_buf = (int*)(buffer2 + cursor);
 
             // current state logic
@@ -273,24 +268,25 @@ int main(int argc, char *argv[]) {
 
             // next state logic
             if (reqStatus == R_TYPE_PING) {
+                // health check
                 printf("Ping\n\n");
             }
             else if (doLoad && node.nodeStatus != N_STATUS_LOADING) {
-                // get data size
+                // initialize loading state machine
                 fileSize = int_buf[1];
                 fileCursor = 0;
-                printf("Clearing JXE\n\n\n");
                 clear_jxe();
-                printf("Updating status to LOADING\n\n\n");
+
+                // register new status with control center
                 updateStatus(N_STATUS_LOADING);
 
                 printf("Prepared to load program of size %d\n", fileSize);
             }
             else if (reqStatus == R_TYPE_REVOKE) {
+                // server requested
                 stayOnline = false;
                 node.nodeStatus = N_STATUS_REVOKED;
                 printf("Revoke\n");
-                break;
             }
             else {
                 printf("Bad request\n");
@@ -314,4 +310,5 @@ int main(int argc, char *argv[]) {
     // === Required cleanup ===
     // ========================
     closeMsg("Connection closed.");
+    save_node_info(&node);
 }
