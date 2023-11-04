@@ -60,9 +60,11 @@ typedef enum {
 
 /** Request types. */
 typedef enum {
-    R_TYPE_PING   = 0b001,
-    R_TYPE_LOAD   = 0b010,
-    R_TYPE_REVOKE = 0b100,
+    R_TYPE_NONE   = 0b00001,
+    R_TYPE_PING   = 0b00010,
+    R_TYPE_FILE   = 0b00100,
+    R_TYPE_CMD    = 0b01000,
+    R_TYPE_REVOKE = 0b10000,
 } request_type_e;
 
 /** Maximum length of the network ID and registration key. */

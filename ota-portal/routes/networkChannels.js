@@ -64,8 +64,6 @@ router.post("/:id/channel", errors.asyncWrap(async function(req, res) {
         nodeIds = networkNodeIds;
     }
 
-    console.log(nodeIds);
-
     // create channel
     await channel.newChannelObj(networkId, nodeIds);
 
@@ -76,17 +74,20 @@ router.post("/:id/channel", errors.asyncWrap(async function(req, res) {
 /**
  * Upload a file to the channel.
  */
-router.post("/:id/channel/file", async function(req, res) {
+router.post("/:id/channel/file", errors.asyncWrap(async function(req, res) {
     req.setEncoding(null);
+
+    const networkId = req.params.id;
+    await network.belongsToOwner(req, networkId);
 
     try {
         // persist file locally
-        fs.writeFileSync(`${process.env.JAMOTA_ROOT}/channels/${req.params.id}`, Buffer.from(req.body));
+        fs.writeFileSync(`${process.env.CHANNEL_FILES_DIR}/${networkId}`, Buffer.from(req.body));
 
         // asynchronously dispatch process to upload file to nodes
-        execNodeScript([scriptPath("jxe_loader"), "--networkId", req.params.id, "--type", "file"], (data) => {
-            console.log(data.toString());
-        });
+        // execNodeScript([scriptPath("jxe_loader"), "--networkId", networkId, "--type", "file"], (data) => {
+        //     console.log(data.toString());
+        // });
 
         res.sendStatus(200);
     }
@@ -94,20 +95,23 @@ router.post("/:id/channel/file", async function(req, res) {
         console.log("Failed", e);
         res.sendStatus(500);
     }
-});
+}));
 
 /**
  * Upload a command to the channel.
  */
-router.post("/:id/channel/cmd", async function(req, res) {
+router.post("/:id/channel/cmd", errors.asyncWrap(async function(req, res) {
+    const networkId = req.params.id;
+    await network.belongsToOwner(req, networkId);
+
     try {
-        let cmd = req.body;
-        console.log(cmd);
+        // persist command locally in file
+        fs.writeFileSync(`${process.env.CHANNEL_COMMANDS_DIR}/${networkId}`, req.body);
 
         // dispatch process to send command to nodes
-        execScript([scriptPath("jxe_loader"), "--networkId", req.params.id, "--type", "command"], (data) => {
-            console.log(data.toString());
-        });
+        // execScript([scriptPath("jxe_loader"), "--networkId", req.params.id, "--type", "cmd"], (data) => {
+        //     console.log(data.toString());
+        // });
 
         res.sendStatus(200);
     }
@@ -115,6 +119,6 @@ router.post("/:id/channel/cmd", async function(req, res) {
         console.log("Failed", e);
         res.sendStatus(500);
     }
-});
+}));
 
 module.exports = router;

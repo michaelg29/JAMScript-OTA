@@ -41,6 +41,7 @@ node_info_t node;
 static unsigned char buffer[BUF_SIZE];
 static unsigned char buffer2[BUF_SIZE];
 static unsigned char err[BUF_SIZE];
+int *int_buf;
 
 /** Kill the program with a message. */
 void closeMsg(const char *msg) {
@@ -190,15 +191,15 @@ int main(int argc, char *argv[]) {
     // === Start listener ===
     // ======================
 
-    if ((servSock = createListenerSocket(OTA_ONLINE_PORT, STR(OTA_ONLINE_PORT))) < 0) {
+    if ((servSock = createListenerSocket(STR(OTA_ONLINE_PORT))) < 0) {
         closeMsg("Could not create listener socket.\n");
     }
 
-    bool notRevoked = true;
+    bool stayOnline = true;
     int invalidMsgCounter = 0;
     int fileSize, fileCursor;
 
-    while (notRevoked) {
+    while (stayOnline) {
         printf("Listening on port %d for a connection.\n", OTA_ONLINE_PORT);
 
         if ((connectedClientSock = accept(servSock, (struct sockaddr *)&client_addr, &addr_size)) < 0) {
@@ -236,10 +237,13 @@ int main(int argc, char *argv[]) {
                 invalidMsgCounter = 0;
             }
 
+            int_buf = (int*)(buffer2 + cursor);
+
+            // current state logic
             if (node.nodeStatus == N_STATUS_LOADING) {
                 printf("Received %d bytes, writing to file at %d.\n", decBytes, fileCursor);
-                if (fileCursor >= fileSize || ((int*)(buffer2 + cursor))[0] == 0) {
-                    // startup with new file
+                if (fileCursor >= fileSize || int_buf[0] == 0) {
+                    // received all data
                     printf("Received all bytes.\n");
                     SEND_STATUS(200);
                     updateStatus(N_STATUS_ONLINE);
@@ -263,27 +267,33 @@ int main(int argc, char *argv[]) {
             }
 
             // get requested status
-            node_status_e reqStatus = (node_status_e)((int*)(buffer2 + cursor))[0];
-            cursor += sizeof(int);
+            request_type_e reqStatus = (request_type_e)int_buf[0];
+            bool doLoad = reqStatus == R_TYPE_FILE || reqStatus == R_TYPE_CMD;
+            printf("reqStatus %d\n", reqStatus);
 
-            if (reqStatus == N_STATUS_LOADING) {
-                if (node.nodeStatus != N_STATUS_LOADING) {
-                    // get file size
-                    fileSize = ((int*)(buffer2 + cursor))[0];
-                    fileCursor = 0;
-                    printf("Clearing JXE\n\n\n");
-                    clear_jxe();
-                    printf("Updating status to LOADING\n\n\n");
-                    updateStatus(N_STATUS_LOADING);
-                    
-                    printf("Prepared to load program of size %d\n", fileSize);
-                }
+            // next state logic
+            if (reqStatus == R_TYPE_PING) {
+                printf("Ping\n\n");
             }
-            else if (reqStatus == N_STATUS_REVOKED) {
-                notRevoked = true;
+            else if (doLoad && node.nodeStatus != N_STATUS_LOADING) {
+                // get data size
+                fileSize = int_buf[1];
+                fileCursor = 0;
+                printf("Clearing JXE\n\n\n");
+                clear_jxe();
+                printf("Updating status to LOADING\n\n\n");
+                updateStatus(N_STATUS_LOADING);
+
+                printf("Prepared to load program of size %d\n", fileSize);
+            }
+            else if (reqStatus == R_TYPE_REVOKE) {
+                stayOnline = false;
+                node.nodeStatus = N_STATUS_REVOKED;
+                printf("Revoke\n");
                 break;
             }
             else {
+                printf("Bad request\n");
                 SEND_STATUS(400);
             }
 
@@ -296,7 +306,7 @@ int main(int argc, char *argv[]) {
     // =========================
     // === Voluntary cleanup ===
     // =========================
-    if (notRevoked) {
+    if (node.nodeStatus == N_STATUS_ONLINE) {
         updateStatus(N_STATUS_OFFLINE);
     }
 

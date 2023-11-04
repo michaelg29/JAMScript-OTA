@@ -1,33 +1,106 @@
 #!/usr/bin/env node
 /**
- * Server to respond to node status changes.
+ * Program to communicate with online nodes.
  */
 
-const errors = require("./../utils/httperror");
+// standard includes
 const fs = require("fs");
-const ijam = require("../utils/ijam_types");
-const node = require("./../utils/node");
-const tcp = require("../utils/tcp");
+const net = require("net");
 
-function killProgram(...data) {
-    console.error(data);
+// OTA includes
+const ijam = require("../utils/ijam_types");
+const tcp = require("../utils/tcp");
+const channel = require("../utils/channel");
+
+// statuses of the TCP clients communicating with each node.
+const client_statuses = {
+    OKAY: 0,
+    WAITING: 1,
+    RETRY: 2,
+    DONE: 3,
+    FAIL: 4
+};
+
+function killProgram(msg) {
+    console.log("ERROR in jxe_loader: ", msg);
     process.exit(1);
 }
 
-// Parameters
-let nodeId = "";
-let program = "clear_redis_nodes";
+function usageError() {
+    killProgram(`node ./jxe_loader --networkId <NETWORK_ID> --type <UPLOAD_TYPE> [--blksize <BLK_SIZE>]\n` +
+        `    --networkId UUID of the network channel to broadcast to.\n` + 
+        `    --type The type of content to broadcast. Must be "${ijam.node.reqTypes.FILE}" or "${ijam.node.reqTypes.CMD}".\n` +
+        `    --blksize The size (in bytes) of the blocks to send the content to the node.\n`);
+}
+
+/**
+ * Data callback for a node.
+ * @param nodeObj The node object.
+ * @param data The data received from the node.
+ * @param done Whether the file has been completely read.
+ */
+function nodeDataCallback(nodeObj, data, done) {
+    console.log("\n\nReceived", data.byteLength, "bytes");
+    // validate response
+    if (data.byteLength != 2) {
+        nodeObj["client"].end();
+        nodeObj["status"] = client_statuses.FAIL;
+        return;
+    }
+
+    // check status
+    let status = data.readInt16LE(0);
+    if (status == 200) {
+        console.log("OKAY");
+    }
+    else if (status == 302) {
+        console.log("Too many error responses, must retry program execution.");
+        nodeObj["client"].end();
+        nodeObj["status"] = client_statuses.FAIL;
+    }
+    else {
+        console.log("Received status code", status, "retrying");
+        nodeObj["status"] = client_statuses.RETRY;
+    }
+
+    if (done) {
+        nodeObj["status"] = client_statuses.DONE;
+    }
+    else {
+        nodeObj["status"] = client_statuses.OKAY;
+    }
+}
+
+/**
+ * Send a buffer to a node.
+ * @param {object} nodeObj The node object with client object and status.
+ * @param {Buffer} buf The buffer to send.
+ * @param {number} bytes The number of bytes in the buffer.
+ */
+function sendNodeData(nodeObj, buf, bytes) {
+    nodeObj["status"] = client_statuses.WAITING;
+    console.log("Sending", bytes, "bytes", buf.toString("hex", 0, bytes));
+    tcp.encryptAndSend(nodeObj["client"], undefined, nodeObj["encKey"], buf.subarray(0, bytes));
+}
+
+// ===============================
+// ===== ARGUMENT VALIDATION =====
+// ===============================
+
+// default parameters
+let networkId = "";
+let reqType = "";
 let blockSize = 128 - 2;
 
-// Parse command line arguments
+// parse command line arguments
 for (let i = 0; i < process.argv.length - 1; ++i) {
     let val = process.argv[i + 1];
     switch (process.argv[i]) {
-        case "--nodeid":
-            nodeId = val;
+        case "--networkId":
+            networkId = val;
             break;
-        case "--prog":
-            program = val;
+        case "--type":
+            reqType = val;
             break;
         case "--blksize":
             blockSize = Number.parseInt(val);
@@ -35,83 +108,138 @@ for (let i = 0; i < process.argv.length - 1; ++i) {
     }
 }
 
-// validate program
+// validate command line arguments
+if (networkId.length == 0 || (reqType != ijam.node.reqTypes.FILE && reqType != ijam.node.reqTypes.CMD) || blockSize <= 0) {
+    usageError();
+}
+
+// get requested filepath
+let filepath = "";
+if (reqType == ijam.node.reqTypes.FILE) {
+    filepath = `${process.env.CHANNEL_FILES_DIR}/${networkId}`;
+}
+else if (reqType == ijam.node.reqTypes.CMD) {
+    filepath = `${process.env.CHANNEL_COMMANDS_DIR}/${networkId}`;
+}
+
+// validate file
 let fileSize = 0;
 try {
-    fileSize = fs.statSync(program).size;
+    fileSize = fs.statSync(filepath).size;
 } catch (e) {
     console.log(e);
 }
-
 if (fileSize == 0) {
-    console.log("Could not find program or program is empty.");
+    throw "Could not find program or program is empty.";
 }
 
-console.log("Loading", program, "to", nodeId, "in blocks of", blockSize, "bytes");
+// client node object list
+let nodes = [];
 
-// Validate request
-node.getNode(nodeId)
-    .then(([nodeObj, _]) => {
-        // program loading status
-        let done = false;
-        let cursor = -blockSize; // offset for first addition
-        let fd = fs.openSync(program, "r");
-        let fileBuf = Buffer.alloc(blockSize);
+// open file
+let sentDone = false, ackDone = false;
+let fd = fs.openSync(filepath, "r");
 
-        // node parameters
-        const encKey = Buffer.from(nodeObj.encKey, "hex");
-        const ip = !!process.env.DOCKER ? "host.docker.internal" : nodeObj.ip;
+// buffer variables
+let buf = Buffer.alloc(8);
+let bytes = buf.byteLength;
+let cursor = -bytes; // offset for first addition
 
-        console.log("File size", fileSize);
+/**
+ * Function to send a new buffer to the nodes every second.
+ */
+function mainLoop() {
+    // wait for nodes to acknowledge previous packet
+    let unfinished = false;
+    for (let nodeObj of nodes) {
+        if (nodeObj["status"] == client_statuses.WAITING) {
+            // continue waiting
+            unfinished = true;
+        }
+        else if (nodeObj["status"] == client_statuses.RETRY) {
+            // retry message
+            sendNodeData(nodeObj, buf, bytes);
+            unfinished = true;
+        }
+    }
+    
+    // advance to next state if all nodes are synchronized
+    if (!unfinished) {
+        // advance cursor
+        cursor += bytes;
 
-        const client = tcp.startClient(ip, process.env.OTA_ONLINE_PORT, () => {
-            // request the node transitions to loading
-            let lengthBuf = Buffer.alloc(4);
-            lengthBuf.writeInt32LE(ijam.oneHotEncoding(ijam.node.statuses.LOADING));
-            lengthBuf.writeInt32LE(fileSize);
-            tcp.encryptAndSend(client, undefined, encKey, lengthBuf);
-        }).on("data", (data) => {
-            console.log("\n\nReceived", data.byteLength, "bytes");
-            // validate response
-            if (data.byteLength != 2) {
-                client.end();
-                return;
-            }
+        // construct next buffer
+        bytes = 0;
+        if (sentDone) {
+            // break out of loop
+            ackDone = true;
+        }
+        else if (cursor < fileSize) {
+            // read file block
+            buf = Buffer.alloc(blockSize);
+            bytes = fs.readSync(fd, buf, 0, blockSize);
+        }
+        else {
+            // send done message
+            buf = Buffer.from([0x00, 0x00, 0x00, 0x00]);
+            bytes = buf.byteLength;
+            sentDone = true;
+        }
 
-            // check status
-            let status = data.readInt16LE(0);
-            if (status == 200) {
-                cursor += blockSize;
+        if (bytes > 0) {
+            // send buffer to nodes
+            for (let nodeObj of nodes) {
+                if (nodeObj["status"] == client_statuses.OKAY) {
+                    sendNodeData(nodeObj, buf, bytes);
+                }
             }
-            else if (status == 302) {
-                console.log("Too many error responses, must retry program execution.");
-            }
-            else {
-                console.log("Received status code", status, "retrying at cursor", cursor);
-            }
+        }
+    }
 
-            if (done) {
-                // close client connection
-                console.log("Done");
-                client.end();
-                return;
-            }
+    // loop condition
+    if (ackDone) {
+        // end program
+        for (let nodeObj of nodes) {
+            nodeObj["client"].end();
+        }
+    }
+    else {
+        // wait another second then check to send next packet
+        setTimeout(mainLoop, 1000);
+    }
+}
 
-            if (cursor < fileSize) {
-                // send file block
-                let bytesRead = fs.readSync(fd, fileBuf, 0, blockSize);
-                tcp.encryptAndSend(client, undefined, encKey, fileBuf.subarray(0, bytesRead));
-            }
-            else {
-                // send done message
-                let doneBuf = Buffer.alloc(4);
-                doneBuf.writeInt32LE(0);
-                tcp.encryptAndSend(client, undefined, encKey, doneBuf);
-                done = true;
-            }
-        }).on("end", () => {
-            process.exit(0);
-        });
+// initialize node list and start send sequence
+channel.getChannelNodes(networkId, true, true)
+    .then((nodeList) => {
+        // initial request buffer
+        buf.writeInt32LE(ijam.oneHotEncoding(ijam.node.reqTypes, reqType), 0);
+        buf.writeInt32LE(fileSize, 4);
+
+        // initialize all clients
+        for (let nodeObj of nodeList) {
+            // determine IP address
+            let ip = !!process.env.DOCKER ? "host.docker.internal" : nodeObj.ip;
+
+            // initial node state
+            nodeObj["status"] = client_statuses.WAITING;
+            nodeObj["encKey"] = Buffer.from(nodeObj.encKey, "hex");
+
+            // start client
+            nodeObj["client"] = new net.Socket();
+            tcp.startClient(nodeObj["client"], ip, Number.parseInt(process.env.OTA_ONLINE_PORT), () => {
+                // request the node transitions to loading
+                sendNodeData(nodeObj, buf, bytes);
+            }).on("data", (data) => {
+                nodeDataCallback(nodeObj, data, sentDone);
+            });
+
+            // add to list
+            nodes.push(nodeObj);
+
+            // start processing
+            setTimeout(mainLoop, 1000);
+        }
     })
     .catch((error) => {
         killProgram(error);

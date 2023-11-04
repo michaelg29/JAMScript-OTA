@@ -36,11 +36,10 @@ int connectToListener(const char *ip, short port);
 
 /**
  * Create a TCP listener.
- * @param port      The port of the listener.
  * @param port_str  The port of the listener as a string.
  * @returns         The file descriptor (fd) for the created socket, -1 if not created.
  */
-int createListenerSocket(short port, const char *port_str);
+int createListenerSocket(const char *port_str);
 
 /**
  * Encrypt a message using AES-256-CBC.

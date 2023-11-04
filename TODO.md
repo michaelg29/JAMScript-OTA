@@ -19,6 +19,7 @@
     * website form to trigger jxe_loader
     * configurable block size - send to node
     * configurable protocol (set on website) - AES params, handshake
+    * ping - if no response, set node to offline
 1. node programs
     * ijamcancel (device-initiated revocation)
     * ijamonline - accept command (jamkill, jamrun, delete existing file)
@@ -27,6 +28,7 @@
         * through website, user uploads new .jxe file
         * through website, user executes jamrun to start new file
         * update jxe_loader to match website data
+        * ping command
 1. website
     * robust UI
     * auto-refresh page data (pull/push)

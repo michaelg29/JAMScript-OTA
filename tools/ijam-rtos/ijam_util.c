@@ -97,7 +97,7 @@ int connectToListener(const char *ip, short port) {
     return sock;
 }
 
-int createListenerSocket(short port, const char *port_str) {
+int createListenerSocket(const char *port_str) {
     int serv_sock;
     struct addrinfo hints, *servinfo, *p;
 

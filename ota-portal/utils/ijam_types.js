@@ -32,6 +32,15 @@ const node_type_e = {
     CLOUD: "cloud",
 };
 
+// Node request types
+const request_type_e = {
+    NONE: "none",
+    PING: "ping",
+    FILE: "file",
+    CMD: "cmd",
+    REVOKE: "revoke"
+};
+
 const emptyUUID = "00000000-0000-0000-0000-000000000000";
 
 /**
@@ -84,7 +93,7 @@ const getZeroTerminatedString = function(buf, offset = 0, maxLen = 0) {
  */
 const oneHotEncoding = function(vals_e, val) {
     let encoded = 1;
-    for (let e_val in vals_e) {
+    for (let e_val of Object.values(vals_e)) {
         if (e_val == val) {
             return encoded;
         }
@@ -202,6 +211,7 @@ module.exports = {
         architectures: node_arch_e,
         statuses: node_status_e,
         types: node_type_e,
+        reqTypes: request_type_e,
     },
     emptyUUID: emptyUUID,
     createUUID: createUUID,

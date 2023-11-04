@@ -55,9 +55,11 @@ const startServer = function(port, dataCallback = undefined, sockDataCallback = 
  * @param {() => void} startupFunction The function to call after connection.
  * @returns {net.Socket} The client object.
  */
-const startClient = function(ip, port, startupFunction) {
+const startClient = function(client, ip, port, startupFunction) {
     console.log("Attempting to connect to", ip, port);
-    const client = new net.Socket();
+    if (!client) {
+        client = new net.Socket();
+    }
     
     client.connect({
         host: ip,

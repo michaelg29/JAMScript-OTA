@@ -1,8 +1,8 @@
 version: "0.0"
 
 networks:
-  ijam_default:
-    driver: bridge
+  ijam-default:
+    driver: host
 
 services:
   ijam-cc:
@@ -33,4 +33,6 @@ services:
       dockerfile: Dockerfile
     entrypoint: ["${JAMOTA_ROOT}/start.sh", "-c"]
     networks:
-      - ijam_default
+      - ijam-default
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
