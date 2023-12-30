@@ -38,15 +38,16 @@ socklen_t addr_size;
 #define MAX_INVALID_MSG_COUNTER 16
 bool stayOnline;
 int invalidMsgCounter;
-int fileSize, fileCursor;
+int dataSize, dataCursor, n;
 node_info_t node;
+request_type_e reqType;
 
 /** Message buffers. */
 #define BUF_SIZE 1024
 int recvBytes, decBytes;
 static unsigned char buffer[BUF_SIZE];
 static unsigned char buffer2[BUF_SIZE];
-static unsigned char err[BUF_SIZE];
+static unsigned char cmdBuf[BUF_SIZE];
 int *int_buf;
 
 /** Kill the program with a message. */
@@ -229,6 +230,7 @@ int main(int argc, char *argv[]) {
             }
             else {
                 invalidMsgCounter = 0;
+                n = decBytes - cursor;
             }
 
             // read request as integers
@@ -236,20 +238,28 @@ int main(int argc, char *argv[]) {
 
             // current state logic
             if (node.nodeStatus == N_STATUS_LOADING) {
-                printf("Received %d bytes, writing to file at %d.\n", decBytes, fileCursor);
-                if (fileCursor >= fileSize || int_buf[0] == 0) {
+                printf("Received %d bytes, writing to file at %d.\n", decBytes, dataCursor);
+                if (dataCursor >= dataSize || int_buf[0] == 0) {
                     // received all data
                     printf("Received all bytes.\n");
-                    SEND_STATUS(200);
+                    if (reqType == R_TYPE_CMD) {
+                        printf("Execute command %s\n", cmdBuf);
+                    }
+
+                    // send statuses
+                    sendStatus(connectedClientSock, 200);
                     updateStatus(N_STATUS_ONLINE);
+
+                    // reset state
+                    reqType = R_TYPE_NONE;
                     break;
                 }
-                else {
+                else if (reqType == R_TYPE_FILE) {
                     // write bytes into file
-                    int n = save_jxe(buffer2 + cursor, fileCursor, decBytes - cursor);
+                    n = save_jxe(buffer2 + cursor, dataCursor, n);
                     if (n) {
-                        fileCursor += n;
-                        printf("Wrote %d bytes, cursor at %d.\n", n, fileCursor);
+                        dataCursor += n;
+                        printf("Wrote %d bytes, cursor at %d.\n", n, dataCursor);
                         SEND_STATUS(200);
                     }
                     else {
@@ -257,32 +267,50 @@ int main(int argc, char *argv[]) {
                         SEND_STATUS(500);
                     }
                 }
+                else if (reqType == R_TYPE_CMD) {
+                    // save command in buffer
+                    memcpy(cmdBuf + dataCursor, buffer2 + cursor, n);
+                    dataCursor += n;
+                    SEND_STATUS(200);
+                }
 
                 continue;
             }
 
             // get requested status
-            request_type_e reqStatus = (request_type_e)int_buf[0];
-            bool doLoad = reqStatus == R_TYPE_FILE || reqStatus == R_TYPE_CMD;
-            printf("reqStatus %d\n", reqStatus);
+            reqType = (request_type_e)int_buf[0];
+            bool doLoad = reqType == R_TYPE_FILE || reqType == R_TYPE_CMD;
+            printf("reqType %d\n", reqType);
 
             // next state logic
-            if (reqStatus == R_TYPE_PING) {
+            if (reqType == R_TYPE_PING) {
                 // health check
                 printf("Ping\n\n");
             }
-            else if (doLoad && node.nodeStatus != N_STATUS_LOADING) {
-                // initialize loading state machine
-                fileSize = int_buf[1];
-                fileCursor = 0;
-                clear_jxe();
+            else if (reqType == R_TYPE_FILE || reqType == R_TYPE_CMD) {
+                // initialize file loading state machine
+                dataSize = int_buf[1];
+                dataCursor = 0;
+
+                // validate request
+                if (reqType == R_TYPE_CMD && dataSize > BUF_SIZE) {
+                    SEND_STATUS(401);
+                }
+
+                // clear existing program or command
+                if (reqType == R_TYPE_FILE) {
+                    clear_jxe();
+                }
+                else {
+                    memset(cmdBuf, 0, BUF_SIZE);
+                }
 
                 // register new status with control center
                 updateStatus(N_STATUS_LOADING);
 
-                printf("Prepared to load program of size %d\n", fileSize);
+                printf("Prepared to load data (type %d) of size %d\n", reqType, dataSize);
             }
-            else if (reqStatus == R_TYPE_REVOKE) {
+            else if (reqType == R_TYPE_REVOKE) {
                 // server requested
                 stayOnline = false;
                 node.nodeStatus = N_STATUS_REVOKED;
@@ -294,8 +322,8 @@ int main(int argc, char *argv[]) {
             }
 
             SEND_STATUS(200);
-        }
 #undef SEND_STATUS
+        }
         closeSock(&connectedClientSock);
     }
 

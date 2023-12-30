@@ -65,9 +65,14 @@ router.post("/:id/channel", errors.asyncWrap(async function(req, res) {
         nodeIds = networkNodeIds;
     }
 
+    // create channel
+    await channel.newChannelObj(networkId, nodeIds);
+
     // validate type and name
     let type = channelReq.type;
     let name = channelReq.name;
+
+    console.log(type, name, nodeIds);
 
     // asynchronously dispatch process to upload to nodes
     execNodeScript([scriptPath("jxe_loader"), "--networkId", networkId, "--type", type, "--name", name], (data) => {

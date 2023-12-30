@@ -235,7 +235,7 @@ const invalidateNodeTransition = function(nodeObj, targetStatus, invalidOrigins)
  * @param {string} ip      IP address of the connected node.
  */
 const transitionNodeOnline = async function(nodeId, nodeObj, ip) {
-    validateNodeTransition(nodeObj, statuses.ONLINE, [statuses.OFFLINE, statuses.ONLINE]);
+    validateNodeTransition(nodeObj, statuses.ONLINE, [statuses.OFFLINE, statuses.ONLINE, statuses.LOADING]);
 
     await onlineNodeObj(nodeId, ip);
 }

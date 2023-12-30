@@ -27,9 +27,10 @@ function killProgram(msg) {
 }
 
 function usageError() {
-    killProgram(`node ./jxe_loader --networkId <NETWORK_ID> --type <UPLOAD_TYPE> [--blksize <BLK_SIZE>]\n` +
+    killProgram(`node ./jxe_loader --networkId <NETWORK_ID> --type <UPLOAD_TYPE> [--name <FILE_NAME>] [--blksize <BLK_SIZE>]\n` +
         `    --networkId UUID of the network channel to broadcast to.\n` + 
         `    --type The type of content to broadcast. Must be "${ijam.node.reqTypes.FILE}" or "${ijam.node.reqTypes.CMD}".\n` +
+        `    --name The name of the file to upload.\n` +
         `    --blksize The size (in bytes) of the blocks to send the content to the node.\n`);
 }
 
@@ -90,23 +91,54 @@ function sendNodeData(nodeObj, buf, bytes) {
 // default parameters
 let networkId = "";
 let reqType = "";
+let reqName = "";
 let blockSize = 128 - 2;
 
 // parse command line arguments
-for (let i = 0; i < process.argv.length - 1; ++i) {
-    let val = process.argv[i + 1];
+for (let i = 0; i < process.argv.length; ++i) {
+    let valid = true;
+
+    // arguments as switches
     switch (process.argv[i]) {
+    default:
+        valid = false;
+        break;
+    };
+
+    // arguments with values
+    if (!valid && i < process.argv.length - 1) {
+        let val = process.argv[i + 1];
+        valid = true;
+        switch (process.argv[i]) {
         case "--networkId":
             networkId = val;
             break;
         case "--type":
             reqType = val;
             break;
+        case "--name":
+            reqName = val;
+            break;
         case "--blksize":
             blockSize = Number.parseInt(val);
             break;
+        default:
+            valid = false;
+            break;
+        };
+
+        if (valid) {
+            // advance cursor past value
+            i += 1;
+        }
+    }
+
+    if (!valid) {
+        console.log("Unrecognized argument:", process.argv[i]);
     }
 }
+
+console.log(networkId, reqType, reqName, blockSize);
 
 // validate command line arguments
 if (networkId.length == 0 || (reqType != ijam.node.reqTypes.FILE && reqType != ijam.node.reqTypes.CMD) || blockSize <= 0) {
@@ -116,10 +148,10 @@ if (networkId.length == 0 || (reqType != ijam.node.reqTypes.FILE && reqType != i
 // get requested filepath
 let filepath = "";
 if (reqType == ijam.node.reqTypes.FILE) {
-    filepath = `${process.env.CHANNEL_FILES_DIR}/${networkId}`;
+    filepath = `${process.env.CHANNELS_DIR}/${networkId}/files/${reqName}`;
 }
 else if (reqType == ijam.node.reqTypes.CMD) {
-    filepath = `${process.env.CHANNEL_COMMANDS_DIR}/${networkId}`;
+    filepath = `${process.env.CHANNELS_DIR}/${networkId}/__cmd__`;
 }
 
 // validate file
@@ -130,7 +162,7 @@ try {
     console.log(e);
 }
 if (fileSize == 0) {
-    throw "Could not find program or program is empty.";
+    throw "Could not find data or data is empty.";
 }
 
 // =========================
@@ -206,6 +238,7 @@ function mainLoop() {
         for (let nodeObj of nodes) {
             nodeObj["client"].end();
         }
+        process.exit(0);
     }
     else {
         // wait another second then check to send next packet
@@ -219,6 +252,7 @@ channel.getChannelNodes(networkId, true, true)
         // initial request buffer to transition state
         buf.writeInt32LE(ijam.oneHotEncoding(ijam.node.reqTypes, reqType), 0);
         buf.writeInt32LE(fileSize, 4);
+        console.log("nodes", nodeList);
 
         // initialize all clients
         for (let nodeObj of nodeList) {

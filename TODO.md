@@ -33,6 +33,8 @@
     * robust UI
     * auto-refresh page data (pull/push)
     * better home page links
+1. directory per network to store multiple files and commands
+    * commands - jamrun, jamkill
 
 ## Backlog
 1. users share network
