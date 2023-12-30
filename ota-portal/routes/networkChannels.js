@@ -44,12 +44,13 @@ async function execNodeScript(args, onstdout, onstderr) {
 router.post("/:id/channel", errors.asyncWrap(async function(req, res) {
     // parse request
     const networkId = req.params.id;
-    const channelReq = request.validateBody(req, ["nodeIds?"]);
+    const channelReq = request.validateBody(req, ["nodeIds?", "type", "name"]);
 
     // validate request
     await network.getNetworkFromOwner(req, networkId);
     let [err, networkNodeIds] = await rclient.getSetMembers(node.networkNodesKey(networkId));
     
+    // get nodes
     let nodeIds = [];
     if ("nodeIds" in channelReq && channelReq.nodeIds.length > 0) {
         // filter nodes to the current network
@@ -64,8 +65,14 @@ router.post("/:id/channel", errors.asyncWrap(async function(req, res) {
         nodeIds = networkNodeIds;
     }
 
-    // create channel
-    await channel.newChannelObj(networkId, nodeIds);
+    // validate type and name
+    let type = channelReq.type;
+    let name = channelReq.name;
+
+    // asynchronously dispatch process to upload to nodes
+    execNodeScript([scriptPath("jxe_loader"), "--networkId", networkId, "--type", type, "--name", name], (data) => {
+        console.log(data.toString());
+    });
 
     // return response
     res.sendStatus(200);
@@ -80,14 +87,15 @@ router.post("/:id/channel/file", errors.asyncWrap(async function(req, res) {
     const networkId = req.params.id;
     await network.belongsToOwner(req, networkId);
 
+    // validate file name
+    const fileName = req.query["name"].toLowerCase();
+    if (fileName.match(/(\s|\/)/)) {
+        errors.error(400, "Invalid filename.")
+    }
+
     try {
         // persist file locally
-        fs.writeFileSync(`${process.env.CHANNEL_FILES_DIR}/${networkId}`, Buffer.from(req.body));
-
-        // asynchronously dispatch process to upload file to nodes
-        // execNodeScript([scriptPath("jxe_loader"), "--networkId", networkId, "--type", "file"], (data) => {
-        //     console.log(data.toString());
-        // });
+        fs.writeFileSync(`${process.env.CHANNELS_DIR}/${networkId}/files/${fileName}`, Buffer.from(req.body));
 
         res.sendStatus(200);
     }
@@ -106,12 +114,7 @@ router.post("/:id/channel/cmd", errors.asyncWrap(async function(req, res) {
 
     try {
         // persist command locally in file
-        fs.writeFileSync(`${process.env.CHANNEL_COMMANDS_DIR}/${networkId}`, req.body);
-
-        // dispatch process to send command to nodes
-        // execScript([scriptPath("jxe_loader"), "--networkId", req.params.id, "--type", "cmd"], (data) => {
-        //     console.log(data.toString());
-        // });
+        fs.writeFileSync(`${process.env.CHANNELS_DIR}/${networkId}/__cmd__`, req.body);
 
         res.sendStatus(200);
     }

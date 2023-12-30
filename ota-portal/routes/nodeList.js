@@ -10,6 +10,7 @@ const errors = require("./../utils/httperror");
 
 const node = require("./../utils/node");
 const network = require("./../utils/network");
+const channel = require("./../utils/channel");
 
 function applyFilter(nodeObj) {
     return true;
@@ -70,8 +71,11 @@ router.get("/", errors.asyncWrap(async function(req, res) {
 
     var data = await filterNodeEntries(req, networkIds);
     var networkId = undefined;
+    var files = [];
     if ("network-id" in req.query) {
         networkId = req.query["network-id"];
+
+        files = await channel.getChannelFiles(networkId);
     }
 
     if (req.headers.accept === "application/json") {
@@ -80,7 +84,8 @@ router.get("/", errors.asyncWrap(async function(req, res) {
     else {
         res.render("node/list", {
             data: data,
-            networkId: networkId
+            networkId: networkId,
+            files: files,
         });
     }
 }));

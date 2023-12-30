@@ -4,6 +4,7 @@
 
 const express = require("express");
 const router = express.Router();
+const fs = require("fs");
 
 const rclient = require("../utils/redis-client");
 const errors = require("../utils/httperror");
@@ -40,6 +41,15 @@ router.post("/", errors.asyncWrap(async function(req, res, next) {
 
     // add network to user's list
     [err, redisRes] = await rclient.addToSet(network.userNetworksKeyFromReq(req), netReq.id);
+
+    // create directories for the network
+    for (let dir of [
+        `${process.env.CHANNELS_DIR}/${netReq.id}`,
+        `${process.env.CHANNELS_DIR}/${netReq.id}/files`]) {
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir);
+        }
+    }
 
     res.status(201).send(networkEntry);
 }));

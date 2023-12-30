@@ -1,4 +1,6 @@
 
+const fs = require("fs");
+
 const errors = require("./httperror");
 const node = require("./node");
 const rclient = require("./redis-client");
@@ -53,7 +55,13 @@ const getChannelNodes = async function(networkId, expandNodes = false, filterOnl
     }
 }
 
+const getChannelFiles = async function(networkId) {
+    const dirName = `${process.env.CHANNELS_DIR}/${networkId}/files`;
+    return fs.readdirSync(dirName);
+}
+
 module.exports = {
     newChannelObj: newChannelObj,
-    getChannelNodes: getChannelNodes
+    getChannelNodes: getChannelNodes,
+    getChannelFiles: getChannelFiles,
 };

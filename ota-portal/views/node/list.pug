@@ -7,14 +7,21 @@ block content
 
   div
     p
-      label Select file to upload to selected nodes
+      label Upload file to server
         input(type="file" id="file-input")
-        input(type="submit" value="Upload", onclick="uploadFile('" + networkId + "')")
+        input(type="submit", value="Upload", onclick="uploadFile('" + networkId + "')")
+
+    p
+      label Select file to download to selected nodes
+        select(id="file-select")
+          each file in files
+            option(value=file) #{file}
+        input(type="submit" value="Download", onclick="downloadFile('" + networkId + "')")
 
     p
       label Send command to selected nodes
         input(type="text" id="cmd-input")
-        input(type="submit" value="Upload" onclick="uploadCommand('" + networkId + "')")
+        input(type="submit" value="Download" onclick="downloadCommand('" + networkId + "')")
 
   h2 Table of nodes
 
