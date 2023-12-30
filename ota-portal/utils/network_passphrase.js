@@ -1,5 +1,7 @@
 
 const rclient = require("./redis-client");
+const errors = require("./httperror");
+const network = require("./network");
 
 const maxPassphraseLength = 16;
 
@@ -68,7 +70,7 @@ const matchNetworkPassphrase = async function(netId, passphrase) {
             await rclient.removeFromSet(networkPassphrasesKey(netId), passphrase);
             await rclient.delObjField(networkPassphraseNamesKey(netId), passphrase);
             let nodeName = redisRes;
-            [redisRes, _] = await getNetwork(netId);
+            [redisRes, _] = await network.getNetwork(netId);
 
             // return node name
             return [redisRes, nodeName];

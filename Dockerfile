@@ -1,16 +1,12 @@
 FROM ubuntu
 
 ENV JAMOTA_ROOT=/home/admin/JAMOTA
-ENV CHANNEL_FILES_DIR=${JAMOTA_ROOT}/channels/files
-ENV CHANNEL_COMMANDS_DIR=${JAMOTA_ROOT}/channels/commands
+ENV CHANNELS_DIR=${JAMOTA_ROOT}/channels
 
 RUN apt-get update && \
     apt install -y -q wget \
-    gcc \
     libssl-dev \
-    make \
     redis-server \
-    ssh \
     sudo \
     zip
 
@@ -30,8 +26,5 @@ RUN sudo chmod +x ${JAMOTA_ROOT}/start.sh
 COPY ./redis/redis.sh ${JAMOTA_ROOT}/redis/redis.sh
 RUN sudo chmod +x ${JAMOTA_ROOT}/redis/redis.sh
 
-RUN sudo mkdir -p ${CHANNEL_FILES_DIR}
-RUN sudo chmod a+rwx ${CHANNEL_FILES_DIR}
-
-RUN sudo mkdir -p ${CHANNEL_COMMANDS_DIR}
-RUN sudo chmod a+rwx ${CHANNEL_COMMANDS_DIR}
+RUN sudo mkdir -p ${CHANNELS_DIR}
+RUN sudo chmod a+rwx ${CHANNELS_DIR}
