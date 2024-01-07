@@ -16,7 +16,7 @@ const fs = require("fs");
 
 const { spawn } = require("child_process");
 
-const scriptPath = (script) => `${process.env.JAMOTA_ROOT}/ota-portal/bin/${script}.js`;
+const scriptPath = (script) => `${process.env.JAMOTA_ROOT}/ota-portal/bin/${script}`;
 
 async function execNodeScript(args, onstdout, onstderr) {
     return new Promise((resolve, reject) => {
@@ -75,6 +75,7 @@ router.post("/:id/channel", errors.asyncWrap(async function(req, res) {
     console.log(type, name, nodeIds);
 
     // asynchronously dispatch process to upload to nodes
+    console.log("Executing script");
     execNodeScript([scriptPath("jxe_loader"), "--networkId", networkId, "--type", type, "--name", name], (data) => {
         console.log(data.toString());
     });

@@ -44,11 +44,13 @@ request_type_e reqType;
 
 /** Message buffers. */
 #define BUF_SIZE 1024
+#define MAX_ARGC 8
 int recvBytes, decBytes;
 static unsigned char buffer[BUF_SIZE];
 static unsigned char buffer2[BUF_SIZE];
 static unsigned char cmdBuf[BUF_SIZE];
-int *int_buf;
+unsigned char *cmdArgs[MAX_ARGC];
+int *intBuf;
 
 /** Kill the program with a message. */
 void closeMsg(const char *msg) {
@@ -234,16 +236,17 @@ int main(int argc, char *argv[]) {
             }
 
             // read request as integers
-            int_buf = (int*)(buffer2 + cursor);
+            intBuf = (int*)(buffer2 + cursor);
 
             // current state logic
             if (node.nodeStatus == N_STATUS_LOADING) {
                 printf("Received %d bytes, writing to file at %d.\n", decBytes, dataCursor);
-                if (dataCursor >= dataSize || int_buf[0] == 0) {
+                if (dataCursor >= dataSize || intBuf[0] == 0) {
                     // received all data
                     printf("Received all bytes.\n");
                     if (reqType == R_TYPE_CMD) {
                         printf("Execute command %s\n", cmdBuf);
+                        exec_cmd(cmdBuf, BUF_SIZE, cmdArgs, MAX_ARGC);
                     }
 
                     // send statuses
@@ -278,7 +281,7 @@ int main(int argc, char *argv[]) {
             }
 
             // get requested status
-            reqType = (request_type_e)int_buf[0];
+            reqType = (request_type_e)intBuf[0];
             bool doLoad = reqType == R_TYPE_FILE || reqType == R_TYPE_CMD;
             printf("reqType %d\n", reqType);
 
@@ -289,7 +292,7 @@ int main(int argc, char *argv[]) {
             }
             else if (reqType == R_TYPE_FILE || reqType == R_TYPE_CMD) {
                 // initialize file loading state machine
-                dataSize = int_buf[1];
+                dataSize = intBuf[1];
                 dataCursor = 0;
 
                 // validate request

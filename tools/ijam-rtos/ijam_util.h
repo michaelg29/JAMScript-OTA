@@ -98,7 +98,17 @@ int save_jxe(unsigned char *buffer, int outCursor, int size);
  * @param buffer    The buffer to write to.
  * @param maxSize   The maximum number of characters to accept.
  * @returns         The number of characters entered.
-*/
+ */
 int get_console_input(unsigned char *buffer, int maxSize);
+
+/**
+ * Tokenize command and execute.
+ * @param cmd       The buffer containing the run command.
+ * @param maxCmdLen The maximum length of the command buffer.
+ * @param cmdArgs   Pre-allocated list to place pointers to tokens.
+ * @param maxArgc   Maximum number of arguments in the buffer.
+ * @returns         The number of arguments in the list.
+ */
+int exec_cmd(char *cmd, unsigned int maxCmdLen, char **cmdArgs, unsigned int maxArgc);
 
 #endif // __IJAM_UTIL_H

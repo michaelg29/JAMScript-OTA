@@ -328,3 +328,43 @@ int get_console_input(unsigned char *buffer, int maxSize) {
 
     return curInputSize;
 }
+
+int exec_cmd(char *cmd, unsigned int maxCmdLen, char **cmdArgs, unsigned int maxArgc) {
+    // tokenize
+    int cmdCursor = 0;
+    int argsCursor = 1;
+    char c = 0;
+    char prevC = 0;
+
+    // iterate through characters
+    cmdArgs[0] = cmd;
+    while (cmdCursor < (maxCmdLen - 1) && argsCursor < maxArgc && (c = cmd[cmdCursor])) {
+        if (c == ' ' && cmd[cmdCursor + 1] != ' ') {
+            cmd[cmdCursor] = 0;
+            cmdArgs[argsCursor] = cmd + (cmdCursor + 1);
+            argsCursor++;
+        }
+        cmdCursor++;
+    }
+
+    // save zero-terminator
+    cmdArgs[argsCursor] = cmd + cmdCursor;
+
+    pid_t pid = fork();
+    if (pid) {
+        // wait for child process executing command to complete
+        int wstatus = 0;
+        waitpid(pid, &wstatus, WUNTRACED);
+
+        printf("Command executed:\n");
+        for (int i = 0; i < argsCursor+1; ++i) {
+            printf("%02d: %s;\n", i, cmdArgs[i]);
+        }
+    }
+    else {
+        // execute command in child process
+        execvp(cmdArgs[0], cmdArgs);
+    }
+
+    return argsCursor;
+}
